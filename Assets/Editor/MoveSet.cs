@@ -7,7 +7,7 @@ using UnityEngine;
 public class MoveSet : EditorWindow
 {
 
-    public void init(int index,int phase, BattleBossFramework parent, List<Animation> moves)
+    public void init(int index,int phase, BattleBossFramework parent, List<AnimationClip> moves)
     {
         this.index = index;
         this.parent = parent;
@@ -17,7 +17,7 @@ public class MoveSet : EditorWindow
 
     public BattleBossFramework parent;
     public int index;
-    public List<Animation> moves = new List<Animation>();
+    public List<AnimationClip> moves = new List<AnimationClip>();
     public int phase;
     
     public static void ShowWindow()
@@ -31,7 +31,7 @@ public class MoveSet : EditorWindow
 
         for (int i = 0; i < moves.Count; i++)
         {
-            moves[i] = EditorGUILayout.ObjectField("Move " + (i + 1 ), moves[i], typeof(GameObject)) as Animation;
+            moves[i] = EditorGUILayout.ObjectField("Move " + (i + 1 ), moves[i], typeof(AnimationClip)) as AnimationClip;
         }
 
         if (GUILayout.Button("Add New Move"))

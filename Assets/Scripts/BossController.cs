@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEditor.Animations;
 using UnityEngine;
+using UnityEngine.AI;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
 using UnityEngine.VFX;
@@ -20,13 +21,16 @@ public class BossController : MonoBehaviour
     [SerializeField] public AnimationClip idle;
     [SerializeField] public AnimationClip run;
     [SerializeField] public AnimationClip spawn;
+    [SerializeField] public AnimationClip hit;
+    [SerializeField] public AnimationClip death;
     private AnimatorController animatorController;
     private Animator anim;
+    [SerializeField] public bool navMovement;
     [SerializeField] private bool includeRun;
     
     
 
-    public void Constructor(GameObject player, float speed,  float attackRange, float runSpeed, float runningDistance, bool includeRun, float health, AnimationClip idle, AnimationClip walk, AnimationClip run)
+    public void Constructor(GameObject player, float speed,  float attackRange, float runSpeed, float runningDistance, bool includeRun, float health, bool navFlag, AnimationClip idle, AnimationClip walk, AnimationClip run, AnimationClip spawn, AnimationClip hit, AnimationClip death)
     {
         this.player = player;
         this.speed = speed;
@@ -38,6 +42,15 @@ public class BossController : MonoBehaviour
         this.run = run;
         this.includeRun = includeRun;
         this.health = health;
+        if (navFlag)
+        {
+            this.AddComponent<NavMeshAgent>();
+            GetComponent<NavMeshAgent>().stoppingDistance = attackRange + 5;
+            navMovement = true;
+        }
+        this.spawn = spawn;
+        this.hit = hit;
+        this.death = death;
     }
 
     private enum States
@@ -57,7 +70,7 @@ public class BossController : MonoBehaviour
     {
         transform.LookAt(GameObject.Find(player.name).transform.position);
         
-        if (Vector3.Distance(transform.position, GameObject.Find(player.name).transform.position) > attackRange)
+        if (Vector3.Distance(transform.position, GameObject.Find(player.name).transform.position) > attackRange && !anim.GetCurrentAnimatorStateInfo(0).IsName("Spawn"))
         {
             
             
@@ -65,18 +78,46 @@ public class BossController : MonoBehaviour
             {
                 anim.SetBool("Walking", false);
                 anim.SetBool("Running", true);
-                transform.Translate(Vector3.forward * runSpeed * Time.deltaTime);
+                anim.SetBool("Attacking", false);
+                if (navMovement)
+                {
+                    GetComponent<NavMeshAgent>().destination = GameObject.Find(player.name).transform.position;
+                    GetComponent<NavMeshAgent>().speed = runSpeed;
+                }
+                else
+                {
+                    transform.Translate(Vector3.forward * runSpeed * Time.deltaTime);
+                }
             }
             else if (Vector3.Distance(GameObject.Find(player.name).transform.position, this.transform.position) <= runningDistance && includeRun)
             {
                 anim.SetBool("Running", false);
                 anim.SetBool("Walking", true);
-                transform.Translate(Vector3.forward * speed * Time.deltaTime);
+                anim.SetBool("Attacking", false);
+                Debug.Log("Walking");
+                if (navMovement)
+                {
+                    GetComponent<NavMeshAgent>().destination = GameObject.Find(player.name).transform.position;
+                    GetComponent<NavMeshAgent>().speed = speed;
+                }
+                else
+                {
+                    transform.Translate(Vector3.forward * speed * Time.deltaTime);
+                }
             }
             else
             {
                 anim.SetBool("Walking", true);
-                transform.Translate(Vector3.forward * speed * Time.deltaTime);
+                anim.SetBool("Attacking", false);
+                if (navMovement)
+                {
+                    GetComponent<NavMeshAgent>().destination = GameObject.Find(player.name).transform.position;
+                    GetComponent<NavMeshAgent>().speed = speed;
+                }
+                else
+                {
+                    transform.Translate(Vector3.forward * speed * Time.deltaTime);
+                }
             }
             
         }
@@ -85,6 +126,8 @@ public class BossController : MonoBehaviour
             if (anim.GetCurrentAnimatorStateInfo(0).normalizedTime > 1.0f && !anim.IsInTransition(0))
             {
                 anim.SetBool("Walking", false);
+                anim.SetBool("Attacking", true);
+                Debug.Log("Attacking");
             }
         }
     }
