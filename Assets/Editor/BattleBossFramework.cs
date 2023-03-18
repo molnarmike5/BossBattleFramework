@@ -37,7 +37,7 @@ public class BattleBossFramework : EditorWindow
     private float speed;
     private List<AnimatorStateMachine> attackStateMachines = new List<AnimatorStateMachine>();
 
-    [SerializeField] public List<List<MoveSet>> phasesList = new ListStack<List<MoveSet>>();
+    [SerializeField] public List<List<MoveSet>> phasesList = new List<List<MoveSet>>();
     private bool prefabTrigger;
     private bool distanceTrigger;
     private AnimatorController animatorController;
@@ -123,10 +123,11 @@ public class BattleBossFramework : EditorWindow
         if (GUILayout.Button("Create Boss Battle"))
         {
             var controller = GameObject.Find(bossPrefab.name).AddComponent<BossController>();
-            controller.Constructor(playerPrefab, speed, attackRange, runSpeed, runningDistance, runFlag, health, navFlag, idle,
-                walk, run, spawn, hit, death);
             initializeAnimator();
             attackMachines();
+            Debug.Log(attackStateMachines.Count);
+            controller.Constructor(playerPrefab, speed, attackRange, runSpeed, runningDistance, runFlag, health, navFlag, idle,
+                walk, run, spawn, hit, death, attackStateMachines);
             //Close();
         }
 
@@ -240,9 +241,10 @@ public class BattleBossFramework : EditorWindow
         {
             for (int i = 0; i < phasesList[y].Count; i++)
             {
-                stateMachine = rootstateMachine.AddStateMachine("Moveset " + (i + 1));
+                stateMachine = rootstateMachine.AddStateMachine("Phase " + (y + 1) + "Moveset " + (i + 1));
                 attackStateMachines.Add(stateMachine);
-                rootstateMachine.AddStateMachineTransition(rootstateMachine, stateMachine);
+                animatorController.AddParameter(stateMachine.name, AnimatorControllerParameterType.Bool);
+                //rootstateMachine.AddStateMachineTransition(rootstateMachine, stateMachine);
                 for (int j = 0; j < phasesList[y][i].moves.Count; j++)
                 {
                     var state = stateMachine.AddState("Attack " + (j + 1));
@@ -282,7 +284,7 @@ public class BattleBossFramework : EditorWindow
                     if (state.state.name is not ("Spawn" and "Death"))
                     {
                         var trans = state.state.AddTransition(sm.states[0].state);
-                        trans.AddCondition(AnimatorConditionMode.If, 0, "Attacking");
+                        trans.AddCondition(AnimatorConditionMode.If, 0, sm.name);
                     }
                     
                 }
