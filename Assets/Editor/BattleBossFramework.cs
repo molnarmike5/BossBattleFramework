@@ -16,8 +16,9 @@ public class BattleBossFramework : EditorWindow
 {
     private int counter = 0;
     private bool spawnGate;
-    private GameObject bossPrefab;
+    public GameObject bossPrefab;
     private GameObject playerPrefab;
+    private GameObject playerWeapon;
     private AnimationClip walk;
     private AnimationClip run;
     private AnimationClip idle;
@@ -54,8 +55,9 @@ public class BattleBossFramework : EditorWindow
     {
         GUILayout.Label("Create New Boss Battle", EditorStyles.boldLabel);
 
-        bossPrefab = EditorGUILayout.ObjectField("Boss Prefab", bossPrefab, typeof(GameObject), false) as GameObject;
-        playerPrefab = EditorGUILayout.ObjectField("Player Prefab", playerPrefab, typeof(GameObject), false) as GameObject;
+        bossPrefab = EditorGUILayout.ObjectField("Boss Prefab", bossPrefab, typeof(GameObject), true) as GameObject;
+        playerPrefab = EditorGUILayout.ObjectField("Player Prefab", playerPrefab, typeof(GameObject), true) as GameObject;
+        playerWeapon = EditorGUILayout.ObjectField("Player Weapon", playerWeapon, typeof(GameObject), true) as GameObject;
         health = EditorGUILayout.FloatField("Health: ", health);
         idle = EditorGUILayout.ObjectField("Idle Animation: ", idle, typeof(AnimationClip), false) as AnimationClip;
         walk = EditorGUILayout.ObjectField("Walk Animation: ", walk, typeof(AnimationClip), false) as AnimationClip;
@@ -126,9 +128,9 @@ public class BattleBossFramework : EditorWindow
             initializeAnimator();
             attackMachines();
             Debug.Log(attackStateMachines.Count);
-            controller.Constructor(playerPrefab, speed, attackRange, runSpeed, runningDistance, runFlag, health, navFlag, idle,
+            controller.Constructor(playerPrefab, playerWeapon, speed, attackRange, runSpeed, runningDistance, runFlag, health, navFlag, idle,
                 walk, run, spawn, hit, death, attackStateMachines);
-            //Close();
+            Close();
         }
 
     }
@@ -156,36 +158,31 @@ public class BattleBossFramework : EditorWindow
 
         var walktoIdle = stateWalk.AddTransition(stateIdle);
         walktoIdle.AddCondition(AnimatorConditionMode.IfNot, 0, "Walking");
-
-
+        
         stateIdle.motion = idle;
         stateWalk.motion = walk;
-
         rootStateMachine.defaultState = stateIdle;
-
-        if (runFlag)
+        var stateRun = rootStateMachine.AddState("Run");
+        animatorController.AddParameter("Running", AnimatorControllerParameterType.Bool);
+        
+        foreach (var state in rootStateMachine.states)
         {
-            var stateRun = rootStateMachine.AddState("Run");
-            animatorController.AddParameter("Running", AnimatorControllerParameterType.Bool);
-
-            foreach (var state in rootStateMachine.states)
-            {
-                if (state.state.name != stateRun.name)
-                {
-                    var transDest = stateRun.AddTransition(state.state);
-                    transDest.AddCondition(AnimatorConditionMode.IfNot, 0, "Running");
-                    var transFrom = state.state.AddTransition(stateRun);
-                    transFrom.AddCondition(AnimatorConditionMode.If, 0, "Running");
-                }
+          if (state.state.name != stateRun.name)
+          {
+             var transDest = stateRun.AddTransition(state.state);
+             transDest.AddCondition(AnimatorConditionMode.IfNot, 0, "Running");
+             var transFrom = state.state.AddTransition(stateRun);
+             transFrom.AddCondition(AnimatorConditionMode.If, 0, "Running");
+          }
                 
-            }
-            stateRun.motion = run;
         }
+        stateRun.motion = run;
+        
 
         if (hitFlag)
         {
             var stateHit = rootStateMachine.AddState("Hit");
-            animatorController.AddParameter("Hit", AnimatorControllerParameterType.Bool);
+            //animatorController.AddParameter("Hit", AnimatorControllerParameterType.Bool);
 
             foreach (var state in rootStateMachine.states)
             {
@@ -193,6 +190,7 @@ public class BattleBossFramework : EditorWindow
                 {
                     var transDest = stateHit.AddTransition(state.state);
                     transDest.AddCondition(AnimatorConditionMode.IfNot, 0, "Hit");
+                    transDest.hasExitTime = true;
                     var transFrom = state.state.AddTransition(stateHit);
                     transFrom.AddCondition(AnimatorConditionMode.If, 0, "Hit");
                 }
@@ -204,7 +202,7 @@ public class BattleBossFramework : EditorWindow
         if (deathFlag)
         {
             var stateDeath = rootStateMachine.AddState("Death");
-            animatorController.AddParameter("Death", AnimatorControllerParameterType.Bool);
+            /*animatorController.AddParameter("Death", AnimatorControllerParameterType.Bool);
 
             foreach (var state in rootStateMachine.states)
             {
@@ -214,7 +212,7 @@ public class BattleBossFramework : EditorWindow
                     transFrom.AddCondition(AnimatorConditionMode.If, 0, "Death");
                 }
                 
-            }
+            }*/
             stateDeath.motion = death;
         }
 
@@ -281,7 +279,7 @@ public class BattleBossFramework : EditorWindow
             {
                 foreach (var sm in attackStateMachines)
                 {
-                    if (state.state.name is not ("Spawn" and "Death"))
+                    if (state.state.name is not ("Spawn" and "Death" and "Hit"))
                     {
                         var trans = state.state.AddTransition(sm.states[0].state);
                         trans.AddCondition(AnimatorConditionMode.If, 0, sm.name);

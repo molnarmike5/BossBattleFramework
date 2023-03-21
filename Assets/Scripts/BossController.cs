@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using Unity.VisualScripting;
@@ -9,11 +10,13 @@ using UnityEngine.Serialization;
 using UnityEngine.UI;
 using UnityEngine.VFX;
 using UnityEditor.Experimental;
+using Random = UnityEngine.Random;
 
 public class BossController : MonoBehaviour
 {
     // Start is called before the first frame update
     [SerializeField] public GameObject player;
+    [SerializeField] public GameObject playerWeapon;
     [SerializeField] public float speed;
     [SerializeField] public float runSpeed;
     [SerializeField] public float attackRange;
@@ -29,16 +32,18 @@ public class BossController : MonoBehaviour
     private Animator anim;
     [SerializeField] public bool navMovement;
     [SerializeField] private bool includeRun;
-    private int phaseCounter = 1;
-    [SerializeField] private List<AnimatorStateMachine> attackStateMachines;
-    [SerializeField] private List<AnimatorStateMachine> currentPhaseStateMachines;
+    [SerializeField] private bool hitFlag;
+    [SerializeField] public int phaseCounter = 1;
+    [SerializeField] public List<AnimatorStateMachine> attackStateMachines;
+    [SerializeField] public List<AnimatorStateMachine> currentPhaseStateMachines;
     private int randomAttack;
 
 
 
-    public void Constructor(GameObject player, float speed,  float attackRange, float runSpeed, float runningDistance, bool includeRun, float health, bool navFlag, AnimationClip idle, AnimationClip walk, AnimationClip run, AnimationClip spawn, AnimationClip hit, AnimationClip death, List<AnimatorStateMachine> attackStateMachines)
+    public void Constructor(GameObject player, GameObject playerWeapon, float speed,  float attackRange, float runSpeed, float runningDistance, bool includeRun, float health, bool navFlag, AnimationClip idle, AnimationClip walk, AnimationClip run, AnimationClip spawn, AnimationClip hit, AnimationClip death, List<AnimatorStateMachine> attackStateMachines)
     {
         this.player = player;
+        this.playerWeapon = playerWeapon;
         this.speed = speed;
         this.runSpeed = runSpeed;
         this.attackRange = attackRange;
@@ -60,21 +65,36 @@ public class BossController : MonoBehaviour
         this.attackStateMachines = attackStateMachines;
     }
 
-    private enum States
-    {
-        Walking,
-        Idle,
-        Attacking,
-    }
-
     void Awake()
     {
         anim = GetComponent<Animator>();
+        if (includeRun)
+        {
+            if(run == null)
+            {
+                Debug.LogError("Run animation not set");
+                EditorApplication.isPlaying = false;
+            }
+        }
     }
 
     // Update is called once per frame
     void Update()
     {
+        if (health <= 0)
+        {
+            for (int i = 0; i < anim.parameters.Length; i++)
+            {
+                anim.SetBool(anim.parameters[i].name, false);
+            }   
+            anim.Play("Death");
+            GetComponent<NavMeshAgent>().speed = 0;
+            GetComponent<NavMeshAgent>().isStopped = true;
+            Destroy(this.gameObject, 10);
+            GetComponent<BossController>().enabled = false;
+            GetComponent<Rigidbody>().freezeRotation = true;
+        }
+
         transform.LookAt(GameObject.Find(player.name).transform.position);
         string currentPhase = "Phase " + phaseCounter;
         currentPhaseStateMachines.Clear();
@@ -110,7 +130,6 @@ public class BossController : MonoBehaviour
                 anim.SetBool("Running", false);
                 anim.SetBool("Walking", true);
                 anim.SetBool(currentPhaseStateMachines[randomAttack].name, false);
-                Debug.Log("Walking");
                 if (navMovement)
                 {
                     GetComponent<NavMeshAgent>().destination = GameObject.Find(player.name).transform.position;
@@ -143,7 +162,6 @@ public class BossController : MonoBehaviour
             {
                 anim.SetBool("Walking", false);
                 anim.SetBool("Attacking", true);
-                //Cooldown for next attack
                 StartCoroutine(decideNextAttack());
             }
         }
@@ -153,7 +171,21 @@ public class BossController : MonoBehaviour
     {
         randomAttack = Random.Range(0, currentPhaseStateMachines.Count);
         anim.SetBool(currentPhaseStateMachines[randomAttack].name, true);
-        yield return new WaitForSeconds(0.5f);
+        yield return new WaitUntil(() => anim.GetCurrentAnimatorStateInfo(0).IsName(currentPhaseStateMachines[randomAttack].states[currentPhaseStateMachines[randomAttack].states.Length - 1].state.name));
         anim.SetBool(currentPhaseStateMachines[randomAttack].name, false);
     }
+
+    void OnTriggerEnter(Collider other)
+    {
+        if (other.gameObject.CompareTag("Player Weapon") && GameObject.Find(player.name).GetComponent<Animator>().GetCurrentAnimatorStateInfo(0).IsName("Attack"))
+        {
+            health -= 50;
+            Debug.Log(health);
+            if (hitFlag)
+            {
+                anim.Play("Hit");
+            }
+        }
+    }
+    
 }

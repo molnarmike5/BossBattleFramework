@@ -2,9 +2,10 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEditor;
+using UnityEditor.Animations;
 using UnityEngine;
 
-public class MoveSet : EditorWindow
+public class MoveSet : EditorWindow //MoveSet.IMoveSet
 {
 
     public void init(int index,int phase, BattleBossFramework parent, List<AnimationClip> moves)
@@ -45,4 +46,5 @@ public class MoveSet : EditorWindow
             Close();
         }
     }
+
 }
