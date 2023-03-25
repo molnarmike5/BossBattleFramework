@@ -25,7 +25,7 @@ public class MoveSet : EditorWindow //MoveSet.IMoveSet
     {
         GetWindow(typeof(MoveSet));
     }
-
+    
     private void OnGUI()
     {
         GUILayout.Label("Manage Moveset " + (index + 1));

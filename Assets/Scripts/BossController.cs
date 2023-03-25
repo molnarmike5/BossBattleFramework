@@ -35,7 +35,7 @@ public class BossController : MonoBehaviour
     [SerializeField] private bool hitFlag;
     [SerializeField] public int phaseCounter;
     [SerializeField] public List<AnimatorStateMachine> attackStateMachines;
-    private List<AnimatorStateMachine> currentStateMachines = new List<AnimatorStateMachine>();
+    [SerializeField] private List<AnimatorStateMachine> currentStateMachines = new List<AnimatorStateMachine>();
     private int randomAttack;
     [Header("Phase Selection")]
     [SerializeField] public List<bool> phases;
@@ -168,7 +168,7 @@ public class BossController : MonoBehaviour
             {
                 anim.SetBool("Walking", false);
                 anim.SetBool("Attacking", true);
-                if (attackStateMachines.Count > 0)
+                if (currentStateMachines.Count > 0)
                 {
                     StartCoroutine(decideNextAttack());    
                 }
@@ -232,12 +232,15 @@ public class BossController : MonoBehaviour
                 currentStateMachines.Add(attackStateMachines[i]);
             }
         }
-
-        for (int i = 0; i < currentStateMachines.Count; i++)
+        int count = currentStateMachines.Count - 1;
+        for (int i = count; i >= 0; i--)
         {
-            if (moves[phaseCounter - 1].moveSet[i] == false)
+            if (currentStateMachines.Count > 0)
             {
-                currentStateMachines.RemoveAt(i);
+                if (moves[phaseCounter - 1].moveSet[i] == false)
+                {
+                    currentStateMachines.RemoveAt(i);
+                }
             }
         }
     }

@@ -43,8 +43,7 @@
   <ItemGroup>
      <Compile Include="Assets\TAZO_3D_C\DemoScene\demo.cs" />
      <Compile Include="Assets\Scripts\PlayerController.cs" />
-     <Compile Include="Assets\Scripts\Phase.cs" />
-     <Compile Include="Assets\Movement.cs" />
+     <Compile Include="Assets\Scripts\Movement.cs" />
      <Compile Include="Assets\Scripts\BossController.cs" />
      <Compile Include="Assets\TAZO_3D_C\DemoScene\Action_Manage.cs" />
      <None Include="Assets\TAZO_3D_C\BOSS\Bull\Shader\Cartoon.shader" />

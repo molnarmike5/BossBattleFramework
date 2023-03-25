@@ -188,6 +188,7 @@ public class BattleBossFramework : EditorWindow
                     rb.mass = rbMass;
                     rb.useGravity = rbUseGravity;
                     rb.collisionDetectionMode = rbCollisionDetection;
+                    rb.freezeRotation = true;
                 }
                 initializeAnimator();
                 attackMachines();
