@@ -43,10 +43,10 @@
   <ItemGroup>
      <Compile Include="Assets\TAZO_3D_C\DemoScene\demo.cs" />
      <Compile Include="Assets\Scripts\PlayerController.cs" />
+     <Compile Include="Assets\Scripts\Phase.cs" />
      <Compile Include="Assets\Movement.cs" />
      <Compile Include="Assets\Scripts\BossController.cs" />
      <Compile Include="Assets\TAZO_3D_C\DemoScene\Action_Manage.cs" />
-     <Compile Include="Assets\Scripts\Phase.cs" />
      <None Include="Assets\TAZO_3D_C\BOSS\Bull\Shader\Cartoon.shader" />
      <Reference Include="UnityEngine">
      <HintPath>D:\Unity Editor\2021.3.6f1\Editor\Data\Managed\UnityEngine\UnityEngine.dll</HintPath>
