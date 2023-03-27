@@ -36,6 +36,7 @@ public class BossController : MonoBehaviour
     [SerializeField] public int phaseCounter;
     [SerializeField] public List<AnimatorStateMachine> attackStateMachines;
     [SerializeField] private List<AnimatorStateMachine> currentStateMachines = new List<AnimatorStateMachine>();
+    [SerializeField] private float activateDistance;
     private int randomAttack;
     [Header("Phase Selection")]
     [SerializeField] public List<bool> phases;
@@ -43,6 +44,10 @@ public class BossController : MonoBehaviour
     [SerializeField] public List<Moves> moves = new List<Moves>();
     [Header("Phase Health Selection")]
     [SerializeField] public List<float> phaseHealth = new List<float>();
+
+    [SerializeField] private int deathTimer;
+
+    private List<Tuple<int, float, bool>> phasesHealthTup = new List<Tuple<int, float, bool>>();
 
     [System.Serializable]
     public struct Moves
@@ -67,8 +72,9 @@ public class BossController : MonoBehaviour
     public void Constructor(GameObject player, GameObject playerWeapon, float speed,  float attackRange, float runSpeed, 
         float runningDistance, bool includeRun, float health, bool navFlag, AnimationClip idle, AnimationClip walk, 
         AnimationClip run, AnimationClip spawn, AnimationClip hit, AnimationClip death, List<AnimatorStateMachine> attackStateMachines, 
-        List<bool> phases, List<List<bool>> moves, List<float> phasesHealth)
+        List<bool> phases, List<List<bool>> moves, List<float> phasesHealth, float activateDistance)
     {
+        //Constructor to delegate Information from the BattleBossFramework to the BossController
         this.player = player;
         this.playerWeapon = playerWeapon;
         this.speed = speed;
@@ -96,31 +102,45 @@ public class BossController : MonoBehaviour
             this.moves.Add(new Moves(moves[i]));
         }
         this.phaseHealth = phasesHealth;
+        this.activateDistance = activateDistance;
     }
     
     private void Start()
     {
         anim = GetComponent<Animator>();
+        //Converts the phaseHealth List to a Tuple List to be able to save the corresponding phase to the health value
+        parsePhaseHealth();
+        //Determines the first phase of the boss which is enabled in the Inspector
         determineFirstPhase();
+        //Extracting attack state machines from the Animator Controller
         getAttackStateMachines();
+        anim.enabled = false;
+        if (navMovement)
+        {
+            GetComponent<NavMeshAgent>().enabled = false;
+        }
+        StartCoroutine(waitUntilDistance());
     }
 
     // Update is called once per frame
     void Update()
     {
+        //Always Look At the Player
         transform.LookAt(GameObject.Find(player.name).transform.position);
+        //Check if the Boss is dead
         checkDeath();
+        //Determine the current phase of the boss
         determineCurrentPhase();
+        //Determine the current attack pool of the boss, depending on the current phase and the moves enabled in the Inspector
         determineCurrentAttackPool();
+        //Basic Boss AI
         if (Vector3.Distance(transform.position, GameObject.Find(player.name).transform.position) > attackRange && !anim.GetCurrentAnimatorStateInfo(0).IsName("Spawn"))
         {
-            
-            
-            if (Vector3.Distance(GameObject.Find(player.name).transform.position, this.transform.position) >= runningDistance && includeRun)
+            if (Vector3.Distance(GameObject.Find(player.name).transform.position, transform.position) >= runningDistance && includeRun && !anim.GetBool("Attacking"))
             {
+                //Run
                 anim.SetBool("Walking", false);
                 anim.SetBool("Running", true);
-                //anim.SetBool(currentStateMachines[randomAttack].name, false);
                 if (navMovement)
                 {
                     GetComponent<NavMeshAgent>().destination = GameObject.Find(player.name).transform.position;
@@ -131,11 +151,11 @@ public class BossController : MonoBehaviour
                     transform.Translate(Vector3.forward * runSpeed * Time.deltaTime);
                 }
             }
-            else if (Vector3.Distance(GameObject.Find(player.name).transform.position, this.transform.position) <= runningDistance && includeRun)
+            else if (Vector3.Distance(GameObject.Find(player.name).transform.position, transform.position) <= runningDistance && includeRun && !anim.GetBool("Attacking"))
             {
+                //Walk
                 anim.SetBool("Running", false);
                 anim.SetBool("Walking", true);
-                //anim.SetBool(currentStateMachines[randomAttack].name, false);
                 if (navMovement)
                 {
                     GetComponent<NavMeshAgent>().destination = GameObject.Find(player.name).transform.position;
@@ -146,10 +166,10 @@ public class BossController : MonoBehaviour
                     transform.Translate(Vector3.forward * speed * Time.deltaTime);
                 }
             }
-            else
+            else if (!anim.GetBool("Attacking"))
             {
+                //Walk, run is disabled
                 anim.SetBool("Walking", true);
-                //anim.SetBool(currentStateMachines[randomAttack].name, false);
                 if (navMovement)
                 {
                     GetComponent<NavMeshAgent>().destination = GameObject.Find(player.name).transform.position;
@@ -164,29 +184,34 @@ public class BossController : MonoBehaviour
         }
         else
         {
+            //Attack
             if (anim.GetCurrentAnimatorStateInfo(0).normalizedTime > 1.0f && !anim.IsInTransition(0))
             {
                 anim.SetBool("Walking", false);
                 anim.SetBool("Attacking", true);
+                GetComponent<NavMeshAgent>().destination = transform.position;
                 if (currentStateMachines.Count > 0)
                 {
                     StartCoroutine(decideNextAttack());    
                 }
-                
             }
         }
     }
 
     IEnumerator decideNextAttack()
     {
+        //Completely Random Attack
         randomAttack = Random.Range(0, currentStateMachines.Count);
         anim.SetBool(currentStateMachines[randomAttack].name, true);
-        yield return new WaitUntil(() => anim.GetCurrentAnimatorStateInfo(0).IsName(currentStateMachines[randomAttack].states[0].state.name));
+        //Wait until the attack state machine is entered
+        yield return new WaitUntil(() => anim.GetCurrentAnimatorStateInfo(0).IsName(currentStateMachines[randomAttack].states[currentStateMachines[randomAttack].states.Length - 2].state.name));
         anim.SetBool(currentStateMachines[randomAttack].name, false);
+        anim.SetBool("Attacking", false);
     }
 
     private void OnCollisionEnter(Collision other)
     {
+        //Hit the Boss
         if (other.gameObject.CompareTag("Player Weapon") && GameObject.Find(player.name).GetComponent<Animator>().GetCurrentAnimatorStateInfo(0).IsName("Attack"))
         {
             health -= 50;
@@ -200,11 +225,12 @@ public class BossController : MonoBehaviour
     
     private void determineFirstPhase()
     {
-        for (int i = 0; i < phases.Count; i++)
+        //Determines the first phase of the boss which is enabled in the Inspector
+        for (int i = 0; i < phasesHealthTup.Count; i++)
         {
-            if (phases[i])
+            if (phasesHealthTup[i].Item3)
             {
-                phaseCounter = i + 1;
+                phaseCounter = phasesHealthTup[i].Item1;
                 break;
             }
         }
@@ -212,17 +238,19 @@ public class BossController : MonoBehaviour
     
     private void determineCurrentPhase()
     {
-        if (phaseCounter < phaseHealth.Count)
+        //Determines the current phase of the boss
+        if (phasesHealthTup.Count > phaseCounter)
         {
-            if (health <= phaseHealth[phaseCounter])
+            if (health <= phasesHealthTup[phaseCounter].Item2)
             {
-                phaseCounter++;
+                phaseCounter = phasesHealthTup[phaseCounter].Item1;
             }
         }
     }
 
     private void determineCurrentAttackPool()
     {
+        //Determines the current attack pool of the boss, depending on the current phase and the moves enabled in the Inspector
         string currentPhase = "Phase " + phaseCounter;
         currentStateMachines.Clear();
         for (int i = 0; i < attackStateMachines.Count; i++)
@@ -247,13 +275,15 @@ public class BossController : MonoBehaviour
 
     private void checkDeath()
     {
+        //Check if the Boss is dead
         if (health <= 0)
         {
+            //Disable all Animations
             for (int i = 0; i < anim.parameters.Length; i++)
             {
                 anim.SetBool(anim.parameters[i].name, false);
             }
-
+            //Play Death Animation if it exists else play Idle Animation
             if (death != null)
             {
                 anim.Play("Death");
@@ -262,9 +292,10 @@ public class BossController : MonoBehaviour
             {
                 anim.Play("Idle");
             }
+            //Disable everything that is not needed anymore
             GetComponent<NavMeshAgent>().speed = 0;
             GetComponent<NavMeshAgent>().isStopped = true;
-            Destroy(this.gameObject, 10);
+            Destroy(gameObject, deathTimer);
             GetComponent<BossController>().enabled = false;
             GetComponent<CapsuleCollider>().enabled = false;
             GetComponent<Rigidbody>().freezeRotation = true;
@@ -273,6 +304,7 @@ public class BossController : MonoBehaviour
 
     private void getAttackStateMachines()
     {
+        //Extract all Attack State Machines from the Animator Controller
         animatorController = anim.runtimeAnimatorController as AnimatorController;
         foreach (var sm in animatorController.layers[0].stateMachine.stateMachines)
         {
@@ -280,6 +312,26 @@ public class BossController : MonoBehaviour
             {
                 attackStateMachines.Add(sm.stateMachine);
             }
+        }
+    }
+
+    IEnumerator waitUntilDistance()
+    {
+        //Wait until the Boss is close enough to the Player to activate the Boss
+        yield return new WaitUntil(() => Vector3.Distance(transform.position, GameObject.Find(player.name).transform.position) < activateDistance);
+        anim.enabled = true;
+        if (navMovement)
+        {
+            GetComponent<NavMeshAgent>().enabled = true;
+        }
+    }
+    
+    private void parsePhaseHealth()
+    {
+        //Parse the Phase Health from the Inspector
+        for (int i = 0; i < phaseHealth.Count; i++)
+        {
+            phasesHealthTup.Add(new Tuple<int, float, bool>(i + 1, phaseHealth[i], phases[i]));
         }
     }
     

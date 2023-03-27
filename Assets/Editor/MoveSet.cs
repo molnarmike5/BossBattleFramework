@@ -32,7 +32,7 @@ public class MoveSet : EditorWindow //MoveSet.IMoveSet
 
         for (int i = 0; i < moves.Count; i++)
         {
-            moves[i] = EditorGUILayout.ObjectField("Move " + (i + 1 ), moves[i], typeof(AnimationClip)) as AnimationClip;
+            moves[i] = EditorGUILayout.ObjectField("Move " + (i + 1 ), moves[i], typeof(AnimationClip), false) as AnimationClip;
         }
 
         if (GUILayout.Button("Add New Move"))
