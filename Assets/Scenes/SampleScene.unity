@@ -257,6 +257,10 @@ PrefabInstance:
       propertyPath: playerWeapon
       value: 
       objectReference: {fileID: 319483974}
+    - target: {fileID: 6720002142428415087, guid: fb5d5564b2067c5478995f2c4ced21fb, type: 3}
+      propertyPath: activateDistance
+      value: 25
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: fb5d5564b2067c5478995f2c4ced21fb, type: 3}
 --- !u!1 &319483974 stripped

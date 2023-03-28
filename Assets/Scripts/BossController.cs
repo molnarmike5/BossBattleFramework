@@ -28,11 +28,13 @@ public class BossController : MonoBehaviour
     [SerializeField] public AnimationClip spawn;
     [SerializeField] public AnimationClip hit;
     [SerializeField] public AnimationClip death;
+    [SerializeField] private int attackCoolDownInSec;
+    private bool isCoolDown = false;
     private AnimatorController animatorController;
     private Animator anim;
     [SerializeField] public bool navMovement;
     [SerializeField] private bool includeRun;
-    [SerializeField] private bool hitFlag;
+    [SerializeField] public bool hitFlag;
     [SerializeField] public int phaseCounter;
     [SerializeField] public List<AnimatorStateMachine> attackStateMachines;
     [SerializeField] private List<AnimatorStateMachine> currentStateMachines = new List<AnimatorStateMachine>();
@@ -105,7 +107,7 @@ public class BossController : MonoBehaviour
         this.activateDistance = activateDistance;
     }
     
-    private void Start()
+    private void Awake()
     {
         anim = GetComponent<Animator>();
         //Converts the phaseHealth List to a Tuple List to be able to save the corresponding phase to the health value
@@ -190,22 +192,35 @@ public class BossController : MonoBehaviour
                 anim.SetBool("Walking", false);
                 anim.SetBool("Attacking", true);
                 GetComponent<NavMeshAgent>().destination = transform.position;
-                if (currentStateMachines.Count > 0)
+                if (!isCoolDown)
                 {
-                    StartCoroutine(decideNextAttack());    
+                    if (currentStateMachines.Count > 0)
+                    {
+                        randomAttack = Random.Range(0, currentStateMachines.Count);
+                        string name = "Attack 1";
+                        StartCoroutine(decideNextAttack(name));    
+                    }
+
+                    StartCoroutine(coolDown());
                 }
+                
             }
         }
     }
 
-    IEnumerator decideNextAttack()
+    IEnumerator decideNextAttack(string name)
     {
         //Completely Random Attack
-        randomAttack = Random.Range(0, currentStateMachines.Count);
         anim.SetBool(currentStateMachines[randomAttack].name, true);
         //Wait until the attack state machine is entered
-        yield return new WaitUntil(() => anim.GetCurrentAnimatorStateInfo(0).IsName(currentStateMachines[randomAttack].states[currentStateMachines[randomAttack].states.Length - 2].state.name));
-        anim.SetBool(currentStateMachines[randomAttack].name, false);
+        yield return new WaitUntil(() => anim.GetCurrentAnimatorStateInfo(0).IsName(name));
+        foreach (var parameter in anim.parameters)
+        {
+            if (parameter.name.Contains("Moveset"))
+            {
+                anim.SetBool(parameter.name, false);
+            }
+        }
         anim.SetBool("Attacking", false);
     }
 
@@ -305,7 +320,9 @@ public class BossController : MonoBehaviour
     private void getAttackStateMachines()
     {
         //Extract all Attack State Machines from the Animator Controller
-        animatorController = anim.runtimeAnimatorController as AnimatorController;
+        animatorController = AssetDatabase
+            .LoadAssetAtPath<AnimatorController>(
+                AssetDatabase.GetAssetPath(GetComponent<Animator>().runtimeAnimatorController));
         foreach (var sm in animatorController.layers[0].stateMachine.stateMachines)
         {
             if (sm.stateMachine.name.Contains("Attack"))
@@ -333,6 +350,13 @@ public class BossController : MonoBehaviour
         {
             phasesHealthTup.Add(new Tuple<int, float, bool>(i + 1, phaseHealth[i], phases[i]));
         }
+    }
+
+    IEnumerator coolDown()
+    {
+        isCoolDown = true;
+        yield return new WaitForSeconds(attackCoolDownInSec);
+        isCoolDown = false;
     }
     
 }

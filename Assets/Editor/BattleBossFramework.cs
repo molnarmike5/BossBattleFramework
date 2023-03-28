@@ -46,7 +46,7 @@ public class BattleBossFramework : EditorWindow
     private float attackRange = 15f;
     private float speed;
     private bool deathMessage = true;
-    private List<AnimatorStateMachine> attackStateMachines = new List<AnimatorStateMachine>();
+    [SerializeField] private List<AnimatorStateMachine> attackStateMachines = new List<AnimatorStateMachine>();
     [SerializeField] public List<List<MoveSet>> phasesList = new List<List<MoveSet>>();
     private bool prefabTrigger;
     private bool distanceTrigger;
@@ -63,7 +63,11 @@ public class BattleBossFramework : EditorWindow
     {
         GetWindow(typeof(BattleBossFramework));
     }
-
+    
+    public List<List<MoveSet>> getPhasesList()
+    {
+        return phasesList;
+    }
     private void OnGUI()
     {
         //Scroll View
