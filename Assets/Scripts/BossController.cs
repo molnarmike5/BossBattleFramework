@@ -15,48 +15,48 @@ using Random = UnityEngine.Random;
 public class BossController : MonoBehaviour
 {
     // Start is called before the first frame update
-    [SerializeField] public GameObject player;
-    [SerializeField] public GameObject playerWeapon;
-    [SerializeField] public float speed;
-    [SerializeField] public float runSpeed;
-    [SerializeField] public float attackRange;
-    [SerializeField] public float runningDistance;
-    [SerializeField] public float health;
-    [SerializeField] public AnimationClip walk;
-    [SerializeField] public AnimationClip idle;
-    [SerializeField] public AnimationClip run;
-    [SerializeField] public AnimationClip spawn;
-    [SerializeField] public AnimationClip hit;
-    [SerializeField] public AnimationClip death;
+    [SerializeField] private GameObject player;
+    [SerializeField] private GameObject playerWeapon;
+    [SerializeField] private float speed;
+    [SerializeField] private float runSpeed;
+    [SerializeField] private float attackRange;
+    [SerializeField] private float runningDistance;
+    [SerializeField] private float health;
+    [SerializeField] private AnimationClip walk;
+    [SerializeField] private AnimationClip idle;
+    [SerializeField] private AnimationClip run;
+    [SerializeField] private AnimationClip spawn;
+    [SerializeField] private AnimationClip hit;
+    [SerializeField] private AnimationClip death;
     [SerializeField] private int attackCoolDownInSec;
     private bool isCoolDown = false;
     private AnimatorController animatorController;
     private Animator anim;
-    [SerializeField] public bool navMovement;
+    [SerializeField] private bool navMovement;
     [SerializeField] private bool includeRun;
-    [SerializeField] public bool hitFlag;
-    [SerializeField] public int phaseCounter;
+    [SerializeField] private bool hitFlag;
+    [SerializeField] private int phaseCounter;
     [Header("Hits needed for Hit Animation to Play and Hit Timer")]
-    [SerializeField] public int hitCount;
-    [SerializeField] public int hitTimer;
+    [SerializeField] private int hitCount;
+    [SerializeField] private int hitTimer;
     private int hitCounter = 0;
-    [SerializeField] public List<AnimatorStateMachine> attackStateMachines;
+    [SerializeField] private List<AnimatorStateMachine> attackStateMachines;
     [SerializeField] private List<AnimatorStateMachine> currentStateMachines = new List<AnimatorStateMachine>();
     [SerializeField] private float activateDistance;
     private int randomAttack;
     [Header("Phase Selection")]
-    [SerializeField] public List<bool> phases;
+    [SerializeField] private List<bool> phases;
     [Header("Moves Selection")]
-    [SerializeField] public List<Moves> moves = new List<Moves>();
+    [SerializeField] private List<Moves> moves = new List<Moves>();
     [Header("Phase Health Selection")]
-    [SerializeField] public List<float> phaseHealth = new List<float>();
+    [SerializeField] private List<float> phaseHealth = new List<float>();
 
     [SerializeField] private int deathTimer;
     private bool collision = false;
 
     private List<Tuple<int, float, bool>> phasesHealthTup = new List<Tuple<int, float, bool>>();
 
-    [System.Serializable]
+    [Serializable]
     public struct Moves
     {
         [SerializeField] public List<bool> moveSet;
@@ -75,7 +75,6 @@ public class BossController : MonoBehaviour
             this.moveSet = moveSet;
         }
     }
-
     public void Constructor(GameObject player, GameObject playerWeapon, float speed,  float attackRange, float runSpeed, 
         float runningDistance, bool includeRun, float health, bool navFlag, AnimationClip idle, AnimationClip walk, 
         AnimationClip run, AnimationClip spawn, AnimationClip hit, AnimationClip death, List<AnimatorStateMachine> attackStateMachines, 
@@ -264,11 +263,11 @@ public class BossController : MonoBehaviour
     private void determineCurrentPhase()
     {
         //Determines the current phase of the boss
-        if (phasesHealthTup.Count > phaseCounter)
+        for (int i = 0; i < phasesHealthTup.Count; i++)
         {
-            if (health <= phasesHealthTup[phaseCounter].Item2)
+            if (health <= phasesHealthTup[i].Item2 && health > phasesHealthTup[i + 1].Item2)
             {
-                phaseCounter = phasesHealthTup[phaseCounter].Item1;
+                phaseCounter = phasesHealthTup[i].Item1;
             }
         }
     }
