@@ -145,7 +145,8 @@ public class BattleBossFramework : EditorWindow
                     //Delegation and Reclaiming MoveSet Information
                     var newMoves = CreateInstance("MoveSet") as MoveSet;
                     newMoves.init(i, p, this, phasesList[p][i].moves);
-                    newMoves.Show();
+                    DestroyImmediate(phasesList[p][i]);
+                    newMoves.ShowModal();
                 }
                 if (GUILayout.Button("Remove Moveset") && phasesList[p].Count > 0)
                 {
@@ -207,7 +208,7 @@ public class BattleBossFramework : EditorWindow
             }
             else if (death == null && deathMessage)
             {
-                EditorUtility.DisplayDialog("Error", "Death Animation not found!", "OK");
+                EditorUtility.DisplayDialog("Error", "Death Animation not found! Are you sure? I'm only asking once :D", "OK");
                 deathMessage = false;
             }
             else if (attackRange < 1)
@@ -223,7 +224,6 @@ public class BattleBossFramework : EditorWindow
                 //Creating Boss Battle
                 var bossobj = GameObject.Find(bossName);
                 bossobj.AddComponent<CapsuleCollider>();
-                var controller = bossobj.AddComponent<BossController>();
                 if (rbFlag)
                 {
                     var rb = bossobj.AddComponent<Rigidbody>();
@@ -232,11 +232,11 @@ public class BattleBossFramework : EditorWindow
                     rb.collisionDetectionMode = rbCollisionDetection;
                     rb.constraints = RigidbodyConstraints.FreezeAll;
                 }
+                var controller = bossobj.AddComponent<BossController>();
                 initializeAnimator();
-                attackMachines();
-                generateInspectorOptions();
+                initializeAttackMachines();
                 controller.Constructor(playerPrefab, playerWeapon, speed, attackRange, runSpeed, runningDistance, runFlag, health, navFlag, idle,
-                    walk, run, spawn, hit, death, attackStateMachines, phases, moves, phasesHealth, activateDistance);
+                    walk, run, spawn, hit, death, attackStateMachines, phases, generateInspectorOptions(), phasesHealth, activateDistance);
                 Close();
             }
             
@@ -352,7 +352,7 @@ public class BattleBossFramework : EditorWindow
 
     }
 
-    void attackMachines()
+    void initializeAttackMachines()
     {
         var rootstateMachine = animatorController.layers[0].stateMachine;
         AnimatorStateMachine stateMachine = new AnimatorStateMachine();
@@ -375,15 +375,13 @@ public class BattleBossFramework : EditorWindow
                         stateMachine.AddEntryTransition(state);
                         stateMachine.defaultState = state;
                     }
-                    else
+                    else if (j > 0)
                     {
                         //States after the first one are connected to the previous one and are automatically played after the previous one
                         var previousState = stateMachine.states[j - 1].state;
                         var transition = previousState.AddTransition(state);
                         transition.hasExitTime = true;
-                    }
-
-                    if (j == phasesList[y][i].moves.Count - 1)
+                    } else if (j == phasesList[y][i].moves.Count - 1)
                     {
                         //Reconnecting to the Idle state, if Spawn exists, it has to be considered
                         if (rootstateMachine.states[0].state.name == "Spawn")
@@ -420,7 +418,7 @@ public class BattleBossFramework : EditorWindow
             {
                 foreach (var sm in attackStateMachines)
                 {
-                    if (state.state.name is not ("Spawn" or "Death" or "Hit"))
+                    if (state.state.name is not ("Spawn" or "Death" or "Hit") && sm.states.Length > 0)
                     {
                         var trans = state.state.AddTransition(sm.states[0].state);
                         trans.AddCondition(AnimatorConditionMode.If, 0, sm.name);
@@ -432,9 +430,10 @@ public class BattleBossFramework : EditorWindow
 
     }
 
-    private void generateInspectorOptions()
+    private List<BossController.Moves> generateInspectorOptions()
     {
         //Generating the resources for Inspector Options
+        List<BossController.Moves> inspMoves = new List<BossController.Moves>();
         phasesHealth.Add(health + 1);
         for (int i = 0; i < phasesList.Count; i++)
         {
@@ -446,9 +445,13 @@ public class BattleBossFramework : EditorWindow
             }
             for (int j = 0; j < phasesList[i].Count; j++)
             {
-                    
                 moves[i].Add(true);
             }
         }
+        for (int i = 0; i < moves.Count; i++)
+        {
+            inspMoves.Add(new BossController.Moves(moves[i]));
+        }
+        return inspMoves;
     }
 }

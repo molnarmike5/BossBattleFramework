@@ -39,6 +39,14 @@ public class MoveSet : EditorWindow //MoveSet.IMoveSet
         {
             moves.Add(null);
         }
+        
+        if (moves.Count > 0)
+        {
+            if (GUILayout.Button("Remove Last Move"))
+            {
+                moves.RemoveAt(moves.Count - 1);
+            }
+        }
 
         if (GUILayout.Button("Save Moves"))
         {

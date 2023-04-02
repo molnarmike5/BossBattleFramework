@@ -36,6 +36,10 @@ public class BossController : MonoBehaviour
     [SerializeField] private bool includeRun;
     [SerializeField] public bool hitFlag;
     [SerializeField] public int phaseCounter;
+    [Header("Hits needed for Hit Animation to Play and Hit Timer")]
+    [SerializeField] public int hitCount;
+    [SerializeField] public int hitTimer;
+    private int hitCounter = 0;
     [SerializeField] public List<AnimatorStateMachine> attackStateMachines;
     [SerializeField] private List<AnimatorStateMachine> currentStateMachines = new List<AnimatorStateMachine>();
     [SerializeField] private float activateDistance;
@@ -48,6 +52,7 @@ public class BossController : MonoBehaviour
     [SerializeField] public List<float> phaseHealth = new List<float>();
 
     [SerializeField] private int deathTimer;
+    private bool collision = false;
 
     private List<Tuple<int, float, bool>> phasesHealthTup = new List<Tuple<int, float, bool>>();
 
@@ -74,7 +79,7 @@ public class BossController : MonoBehaviour
     public void Constructor(GameObject player, GameObject playerWeapon, float speed,  float attackRange, float runSpeed, 
         float runningDistance, bool includeRun, float health, bool navFlag, AnimationClip idle, AnimationClip walk, 
         AnimationClip run, AnimationClip spawn, AnimationClip hit, AnimationClip death, List<AnimatorStateMachine> attackStateMachines, 
-        List<bool> phases, List<List<bool>> moves, List<float> phasesHealth, float activateDistance)
+        List<bool> phases, List<Moves> moves, List<float> phaseHealth, float activateDistance)
     {
         //Constructor to delegate Information from the BattleBossFramework to the BossController
         this.player = player;
@@ -99,11 +104,8 @@ public class BossController : MonoBehaviour
         this.death = death;
         this.attackStateMachines = attackStateMachines;
         this.phases = phases;
-        for (int i = 0; i < moves.Count; i++)
-        {
-            this.moves.Add(new Moves(moves[i]));
-        }
-        this.phaseHealth = phasesHealth;
+        this.moves = moves;
+        this.phaseHealth = phaseHealth;
         this.activateDistance = activateDistance;
     }
     
@@ -227,14 +229,22 @@ public class BossController : MonoBehaviour
     private void OnCollisionEnter(Collision other)
     {
         //Hit the Boss
-        if (other.gameObject.CompareTag("Player Weapon") && GameObject.Find(player.name).GetComponent<Animator>().GetCurrentAnimatorStateInfo(0).IsName("Attack"))
+        if (other.gameObject.CompareTag("Player Weapon") && GameObject.Find(player.name).GetComponent<Animator>().GetCurrentAnimatorStateInfo(0).IsName("Attack") && !collision)
         {
+            collision = true;
             health -= 50;
             Debug.Log(health);
-            if (hitFlag && (hit != null))
+            if (hitFlag && hit != null && hitCounter > hitCount)
             {
                 anim.Play("Hit");
+                hitCounter = 0;
             }
+            else if (hitFlag && hit != null)
+            {
+                hitCounter++;
+            }
+            StartCoroutine(resetHitCounter());
+            StartCoroutine(resetCollision());
         }
     }
     
@@ -359,4 +369,17 @@ public class BossController : MonoBehaviour
         isCoolDown = false;
     }
     
+    IEnumerator resetHitCounter()
+    {
+        yield return new WaitForSeconds(hitTimer);
+        hitCounter = 0;
+    }
+
+    IEnumerator resetCollision()
+    {
+        yield return new WaitUntil(() =>
+            !GameObject.Find(player.name).GetComponent<Animator>().GetCurrentAnimatorStateInfo(0).IsName("Attack"));
+        collision = false;
+    }
+
 }

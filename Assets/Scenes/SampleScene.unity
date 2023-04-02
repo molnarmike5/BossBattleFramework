@@ -250,9 +250,25 @@ PrefabInstance:
       value: Boss Test
       objectReference: {fileID: 0}
     - target: {fileID: 6720002142428415087, guid: fb5d5564b2067c5478995f2c4ced21fb, type: 3}
+      propertyPath: health
+      value: 20000
+      objectReference: {fileID: 0}
+    - target: {fileID: 6720002142428415087, guid: fb5d5564b2067c5478995f2c4ced21fb, type: 3}
       propertyPath: player
       value: 
       objectReference: {fileID: 517933351}
+    - target: {fileID: 6720002142428415087, guid: fb5d5564b2067c5478995f2c4ced21fb, type: 3}
+      propertyPath: hitFlag
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6720002142428415087, guid: fb5d5564b2067c5478995f2c4ced21fb, type: 3}
+      propertyPath: hitCount
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 6720002142428415087, guid: fb5d5564b2067c5478995f2c4ced21fb, type: 3}
+      propertyPath: hitTimer
+      value: 5
+      objectReference: {fileID: 0}
     - target: {fileID: 6720002142428415087, guid: fb5d5564b2067c5478995f2c4ced21fb, type: 3}
       propertyPath: playerWeapon
       value: 
