@@ -201,6 +201,26 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 6720002142428415072, guid: fb5d5564b2067c5478995f2c4ced21fb, type: 3}
+      propertyPath: m_Height
+      value: 1.8
+      objectReference: {fileID: 0}
+    - target: {fileID: 6720002142428415072, guid: fb5d5564b2067c5478995f2c4ced21fb, type: 3}
+      propertyPath: m_Enabled
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6720002142428415072, guid: fb5d5564b2067c5478995f2c4ced21fb, type: 3}
+      propertyPath: m_Center.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6720002142428415072, guid: fb5d5564b2067c5478995f2c4ced21fb, type: 3}
+      propertyPath: m_Center.y
+      value: 0.7
+      objectReference: {fileID: 0}
+    - target: {fileID: 6720002142428415072, guid: fb5d5564b2067c5478995f2c4ced21fb, type: 3}
+      propertyPath: m_Center.z
+      value: 0.2
+      objectReference: {fileID: 0}
     - target: {fileID: 6720002142428415073, guid: fb5d5564b2067c5478995f2c4ced21fb, type: 3}
       propertyPath: m_RootOrder
       value: 5
@@ -211,11 +231,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6720002142428415073, guid: fb5d5564b2067c5478995f2c4ced21fb, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.79
+      value: -0.1
       objectReference: {fileID: 0}
     - target: {fileID: 6720002142428415073, guid: fb5d5564b2067c5478995f2c4ced21fb, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 8.44
+      value: 7.09
       objectReference: {fileID: 0}
     - target: {fileID: 6720002142428415073, guid: fb5d5564b2067c5478995f2c4ced21fb, type: 3}
       propertyPath: m_LocalRotation.w
@@ -249,9 +269,13 @@ PrefabInstance:
       propertyPath: m_Name
       value: Boss Test
       objectReference: {fileID: 0}
+    - target: {fileID: 6720002142428415084, guid: fb5d5564b2067c5478995f2c4ced21fb, type: 3}
+      propertyPath: m_Height
+      value: 5
+      objectReference: {fileID: 0}
     - target: {fileID: 6720002142428415087, guid: fb5d5564b2067c5478995f2c4ced21fb, type: 3}
       propertyPath: health
-      value: 20000
+      value: 550
       objectReference: {fileID: 0}
     - target: {fileID: 6720002142428415087, guid: fb5d5564b2067c5478995f2c4ced21fb, type: 3}
       propertyPath: player
@@ -270,12 +294,24 @@ PrefabInstance:
       value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 6720002142428415087, guid: fb5d5564b2067c5478995f2c4ced21fb, type: 3}
+      propertyPath: turnSpeed
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6720002142428415087, guid: fb5d5564b2067c5478995f2c4ced21fb, type: 3}
+      propertyPath: navMovement
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6720002142428415087, guid: fb5d5564b2067c5478995f2c4ced21fb, type: 3}
       propertyPath: playerWeapon
       value: 
       objectReference: {fileID: 319483974}
     - target: {fileID: 6720002142428415087, guid: fb5d5564b2067c5478995f2c4ced21fb, type: 3}
       propertyPath: activateDistance
       value: 25
+      objectReference: {fileID: 0}
+    - target: {fileID: 6720002142428415087, guid: fb5d5564b2067c5478995f2c4ced21fb, type: 3}
+      propertyPath: characterControllerMovement
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: fb5d5564b2067c5478995f2c4ced21fb, type: 3}
@@ -284,7 +320,7 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 3784850548466650925, guid: c564c8c0d0cdc45429417f315e9f3e41, type: 3}
   m_PrefabInstance: {fileID: 1432239315}
   m_PrefabAsset: {fileID: 0}
---- !u!136 &319483978
+--- !u!136 &319483982
 CapsuleCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -351,7 +387,7 @@ CapsuleCollider:
   m_GameObject: {fileID: 517933351}
   m_Material: {fileID: 0}
   m_IsTrigger: 0
-  m_Enabled: 0
+  m_Enabled: 1
   m_Radius: 0.5
   m_Height: 1
   m_Direction: 1

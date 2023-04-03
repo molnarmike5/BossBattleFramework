@@ -54,16 +54,7 @@ public class Movement : MonoBehaviour
         {
             anim.SetBool("Moving", false);
         }
-        
-        if(anim.GetBool("Attack"))
-        {
-            weapon.GetComponent<CapsuleCollider>().enabled = true;
-        }
-        else
-        {
-            weapon.GetComponent<CapsuleCollider>().enabled = false;
-        }
-        
+
     }
     
     IEnumerator Attack()

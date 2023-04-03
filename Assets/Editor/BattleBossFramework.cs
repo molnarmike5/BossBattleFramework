@@ -32,11 +32,11 @@ public class BattleBossFramework : EditorWindow
     private float runningDistance;
     private float health = 1;
     private bool runFlag;
-    private bool navFlag;
     private bool hitFlag;
     private bool deathFlag;
     private bool spawnFlag;
     private bool rbFlag;
+    private bool navMovement;
     private int rbMass;
     private bool rbUseGravity;
     private bool prefabFlag;
@@ -89,6 +89,10 @@ public class BattleBossFramework : EditorWindow
         activateDistance = EditorGUILayout.FloatField("Activate Distance: ", activateDistance);
         GUILayout.Box(GUIContent.none, style, GUILayout.Height(1));
         spawnFlag = EditorGUILayout.Toggle("Include Spawn Animation?", spawnFlag);
+        GUILayout.Label("Movement Options:", EditorStyles.boldLabel);
+        GUILayout.Label("By default movement is simply handled by transform translate, movement options can be later enabled!", EditorStyles.boldLabel);
+        navMovement = EditorGUILayout.Toggle("Include NavMesh Movement?", navMovement);
+        GUILayout.Box(GUIContent.none, style, GUILayout.Height(1));
         if (spawnFlag)
         {
             EditorGUI.indentLevel++;
@@ -118,7 +122,6 @@ public class BattleBossFramework : EditorWindow
             death = EditorGUILayout.ObjectField("Death Animation: ", death, typeof(AnimationClip), false) as AnimationClip;
             EditorGUI.indentLevel--;
         }
-        navFlag = EditorGUILayout.Toggle("Include NavMesh Movement?", navFlag);
         rbFlag = EditorGUILayout.Toggle("Include Rigidbody?", rbFlag);
         EditorGUILayout.LabelField("Rigidbody is required for Damage detection to work!");
         if (rbFlag)
@@ -232,10 +235,14 @@ public class BattleBossFramework : EditorWindow
                     rb.collisionDetectionMode = rbCollisionDetection;
                     rb.constraints = RigidbodyConstraints.FreezeAll;
                 }
+                if (navMovement)
+                {
+                    bossobj.AddComponent<NavMeshAgent>().stoppingDistance = attackRange - 1;
+                }
                 var controller = bossobj.AddComponent<BossController>();
                 initializeAnimator();
                 initializeAttackMachines();
-                controller.Constructor(playerPrefab, playerWeapon, speed, attackRange, runSpeed, runningDistance, runFlag, health, navFlag, idle,
+                controller.Constructor(playerPrefab, playerWeapon, speed, attackRange, runSpeed, runningDistance, runFlag, health, navMovement, idle,
                     walk, run, spawn, hit, death, attackStateMachines, phases, generateInspectorOptions(), phasesHealth, activateDistance);
                 Close();
             }
@@ -247,6 +254,13 @@ public class BattleBossFramework : EditorWindow
     private void OnInspectorUpdate()
     {
         Repaint();
+    }
+
+    private void OnEnable()
+    {
+        EditorUtility.DisplayDialog("Information", "Some useful information for this framework to work!\n" +
+                                                   "1. Make sure the suitable collider is attached to the player weapon for health system and collision detection to work!\n" +
+                                                    "2. Currently getting hit by the boss is not included, since this is very special and dependant on a lot of factors!\n", "OK");
     }
 
     void initializeAnimator()

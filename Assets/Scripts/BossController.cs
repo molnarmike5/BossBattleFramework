@@ -19,6 +19,7 @@ public class BossController : MonoBehaviour
     [SerializeField] private GameObject playerWeapon;
     [SerializeField] private float speed;
     [SerializeField] private float runSpeed;
+    [SerializeField] private float turnSpeed;
     [SerializeField] private float attackRange;
     [SerializeField] private float runningDistance;
     [SerializeField] private float health;
@@ -55,6 +56,9 @@ public class BossController : MonoBehaviour
     private bool collision = false;
 
     private List<Tuple<int, float, bool>> phasesHealthTup = new List<Tuple<int, float, bool>>();
+    
+    private NavMeshAgent agent;
+    private bool waiting = true;
 
     [Serializable]
     public struct Moves
@@ -76,7 +80,7 @@ public class BossController : MonoBehaviour
         }
     }
     public void Constructor(GameObject player, GameObject playerWeapon, float speed,  float attackRange, float runSpeed, 
-        float runningDistance, bool includeRun, float health, bool navFlag, AnimationClip idle, AnimationClip walk, 
+        float runningDistance, bool includeRun, float health, bool navMovement, AnimationClip idle, AnimationClip walk, 
         AnimationClip run, AnimationClip spawn, AnimationClip hit, AnimationClip death, List<AnimatorStateMachine> attackStateMachines, 
         List<bool> phases, List<Moves> moves, List<float> phaseHealth, float activateDistance)
     {
@@ -92,12 +96,7 @@ public class BossController : MonoBehaviour
         this.run = run;
         this.includeRun = includeRun;
         this.health = health;
-        if (navFlag)
-        {
-            this.AddComponent<NavMeshAgent>();
-            GetComponent<NavMeshAgent>().stoppingDistance = attackRange - 1;
-            navMovement = true;
-        }
+        this.navMovement = navMovement;
         this.spawn = spawn;
         this.hit = hit;
         this.death = death;
@@ -111,6 +110,15 @@ public class BossController : MonoBehaviour
     private void Awake()
     {
         anim = GetComponent<Animator>();
+        if (navMovement)
+        {
+            if (GetComponent<NavMeshAgent>() == null && navMovement)
+            {
+                this.AddComponent<NavMeshAgent>();
+            }
+            agent = GetComponent<NavMeshAgent>();
+            agent.stoppingDistance = attackRange - 0.5f;
+        }
         //Converts the phaseHealth List to a Tuple List to be able to save the corresponding phase to the health value
         parsePhaseHealth();
         //Determines the first phase of the boss which is enabled in the Inspector
@@ -118,93 +126,96 @@ public class BossController : MonoBehaviour
         //Extracting attack state machines from the Animator Controller
         getAttackStateMachines();
         anim.enabled = false;
-        if (navMovement)
-        {
-            GetComponent<NavMeshAgent>().enabled = false;
-        }
         StartCoroutine(waitUntilDistance());
     }
 
     // Update is called once per frame
     void Update()
     {
-        //Always Look At the Player
-        transform.LookAt(GameObject.Find(player.name).transform.position);
-        //Check if the Boss is dead
-        checkDeath();
-        //Determine the current phase of the boss
-        determineCurrentPhase();
-        //Determine the current attack pool of the boss, depending on the current phase and the moves enabled in the Inspector
-        determineCurrentAttackPool();
-        //Basic Boss AI
-        if (Vector3.Distance(transform.position, GameObject.Find(player.name).transform.position) > attackRange && !anim.GetCurrentAnimatorStateInfo(0).IsName("Spawn"))
+        if (!waiting)
         {
-            if (Vector3.Distance(GameObject.Find(player.name).transform.position, transform.position) >= runningDistance && includeRun && !anim.GetBool("Attacking"))
+            //Always Look At the Player
+            var targetRotation = Quaternion.LookRotation(GameObject.Find(player.name).transform.position - transform.position);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, turnSpeed * Time.deltaTime);
+            //Check if the Boss is dead
+            checkDeath();
+            //Determine the current phase of the boss
+            determineCurrentPhase();
+            //Determine the current attack pool of the boss, depending on the current phase and the moves enabled in the Inspector
+            determineCurrentAttackPool();
+            //Basic Boss AI
+            if (Vector3.Distance(transform.position, GameObject.Find(player.name).transform.position) > attackRange &&
+                !anim.GetCurrentAnimatorStateInfo(0).IsName("Spawn"))
             {
-                //Run
-                anim.SetBool("Walking", false);
-                anim.SetBool("Running", true);
-                if (navMovement)
+                if (Vector3.Distance(GameObject.Find(player.name).transform.position, transform.position) >=
+                    runningDistance && includeRun && !anim.GetBool("Attacking"))
                 {
-                    GetComponent<NavMeshAgent>().destination = GameObject.Find(player.name).transform.position;
-                    GetComponent<NavMeshAgent>().speed = runSpeed;
-                }
-                else
-                {
-                    transform.Translate(Vector3.forward * runSpeed * Time.deltaTime);
-                }
-            }
-            else if (Vector3.Distance(GameObject.Find(player.name).transform.position, transform.position) <= runningDistance && includeRun && !anim.GetBool("Attacking"))
-            {
-                //Walk
-                anim.SetBool("Running", false);
-                anim.SetBool("Walking", true);
-                if (navMovement)
-                {
-                    GetComponent<NavMeshAgent>().destination = GameObject.Find(player.name).transform.position;
-                    GetComponent<NavMeshAgent>().speed = speed;
-                }
-                else
-                {
-                    transform.Translate(Vector3.forward * speed * Time.deltaTime);
-                }
-            }
-            else if (!anim.GetBool("Attacking"))
-            {
-                //Walk, run is disabled
-                anim.SetBool("Walking", true);
-                if (navMovement)
-                {
-                    GetComponent<NavMeshAgent>().destination = GameObject.Find(player.name).transform.position;
-                    GetComponent<NavMeshAgent>().speed = speed;
-                }
-                else
-                {
-                    transform.Translate(Vector3.forward * speed * Time.deltaTime);
-                }
-            }
-            
-        }
-        else
-        {
-            //Attack
-            if (anim.GetCurrentAnimatorStateInfo(0).normalizedTime > 1.0f && !anim.IsInTransition(0))
-            {
-                anim.SetBool("Walking", false);
-                anim.SetBool("Attacking", true);
-                GetComponent<NavMeshAgent>().destination = transform.position;
-                if (!isCoolDown)
-                {
-                    if (currentStateMachines.Count > 0)
+                    //Run
+                    anim.SetBool("Walking", false);
+                    anim.SetBool("Running", true);
+                    if (navMovement)
                     {
-                        randomAttack = Random.Range(0, currentStateMachines.Count);
-                        string name = "Attack 1";
-                        StartCoroutine(decideNextAttack(name));    
+                        agent.destination = GameObject.Find(player.name).transform.position;
+                        agent.speed = runSpeed;
+                    }
+                    else
+                    {
+                        transform.Translate(Vector3.forward * runSpeed * Time.deltaTime);
+                    }
+                }
+                else if (Vector3.Distance(GameObject.Find(player.name).transform.position, transform.position) <=
+                         runningDistance && includeRun && !anim.GetBool("Attacking"))
+                {
+                    //Walk
+                    anim.SetBool("Running", false);
+                    anim.SetBool("Walking", true);
+                    if (navMovement)
+                    {
+                        agent.destination = GameObject.Find(player.name).transform.position;
+                        agent.speed = speed;
+                    }
+                    else
+                    {
+                        transform.Translate(Vector3.forward * speed * Time.deltaTime);
+                    }
+                }
+                else if (!anim.GetBool("Attacking"))
+                {
+                    //Walk, run is disabled
+                    anim.SetBool("Walking", true);
+                    if (navMovement)
+                    {
+                        agent.destination = GameObject.Find(player.name).transform.position;
+                        agent.speed = speed;
+                    }
+                    else
+                    {
+                        transform.Translate(Vector3.forward * speed * Time.deltaTime);
+                    }
+                }
+
+            }
+            else
+            {
+                //Attack
+                if (anim.GetCurrentAnimatorStateInfo(0).normalizedTime > 1.0f && !anim.IsInTransition(0))
+                {
+                    anim.SetBool("Walking", false);
+                    anim.SetBool("Attacking", true);
+                    GetComponent<NavMeshAgent>().destination = transform.position;
+                    if (!isCoolDown)
+                    {
+                        if (currentStateMachines.Count > 0)
+                        {
+                            randomAttack = Random.Range(0, currentStateMachines.Count);
+                            string name = "Attack 1";
+                            StartCoroutine(decideNextAttack(name));
+                        }
+
+                        StartCoroutine(coolDown());
                     }
 
-                    StartCoroutine(coolDown());
                 }
-                
             }
         }
     }
@@ -227,7 +238,7 @@ public class BossController : MonoBehaviour
 
     private void OnCollisionEnter(Collision other)
     {
-        //Hit the Boss
+        
         if (other.gameObject.CompareTag("Player Weapon") && GameObject.Find(player.name).GetComponent<Animator>().GetCurrentAnimatorStateInfo(0).IsName("Attack") && !collision)
         {
             collision = true;
@@ -245,6 +256,7 @@ public class BossController : MonoBehaviour
             StartCoroutine(resetHitCounter());
             StartCoroutine(resetCollision());
         }
+        
     }
     
     private void determineFirstPhase()
@@ -265,7 +277,7 @@ public class BossController : MonoBehaviour
         //Determines the current phase of the boss
         for (int i = 0; i < phasesHealthTup.Count; i++)
         {
-            if (health <= phasesHealthTup[i].Item2 && health > phasesHealthTup[i + 1].Item2)
+            if (health <= phasesHealthTup[i].Item2)
             {
                 phaseCounter = phasesHealthTup[i].Item1;
             }
@@ -322,7 +334,6 @@ public class BossController : MonoBehaviour
             Destroy(gameObject, deathTimer);
             GetComponent<BossController>().enabled = false;
             GetComponent<CapsuleCollider>().enabled = false;
-            GetComponent<Rigidbody>().freezeRotation = true;
         }
     }
 
@@ -346,10 +357,7 @@ public class BossController : MonoBehaviour
         //Wait until the Boss is close enough to the Player to activate the Boss
         yield return new WaitUntil(() => Vector3.Distance(transform.position, GameObject.Find(player.name).transform.position) < activateDistance);
         anim.enabled = true;
-        if (navMovement)
-        {
-            GetComponent<NavMeshAgent>().enabled = true;
-        }
+        waiting = false;
     }
     
     private void parsePhaseHealth()
