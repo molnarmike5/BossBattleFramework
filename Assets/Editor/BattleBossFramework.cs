@@ -34,6 +34,7 @@ public class BattleBossFramework : EditorWindow
     private bool runFlag;
     private bool hitFlag;
     private bool deathFlag;
+    private int deathtimer;
     private bool spawnFlag;
     private bool rbFlag;
     private bool navMovement;
@@ -88,11 +89,11 @@ public class BattleBossFramework : EditorWindow
         speed = EditorGUILayout.FloatField("Speed: ", speed);
         activateDistance = EditorGUILayout.FloatField("Activate Distance: ", activateDistance);
         GUILayout.Box(GUIContent.none, style, GUILayout.Height(1));
-        spawnFlag = EditorGUILayout.Toggle("Include Spawn Animation?", spawnFlag);
         GUILayout.Label("Movement Options:", EditorStyles.boldLabel);
         GUILayout.Label("By default movement is simply handled by transform translate, movement options can be later enabled!", EditorStyles.boldLabel);
         navMovement = EditorGUILayout.Toggle("Include NavMesh Movement?", navMovement);
         GUILayout.Box(GUIContent.none, style, GUILayout.Height(1));
+        spawnFlag = EditorGUILayout.Toggle("Include Spawn Animation?", spawnFlag);
         if (spawnFlag)
         {
             EditorGUI.indentLevel++;
@@ -120,6 +121,7 @@ public class BattleBossFramework : EditorWindow
         {
             EditorGUI.indentLevel++;
             death = EditorGUILayout.ObjectField("Death Animation: ", death, typeof(AnimationClip), false) as AnimationClip;
+            deathtimer = EditorGUILayout.IntField("Death Timer in seconds(Until the disappearance of the game object): ", deathtimer);
             EditorGUI.indentLevel--;
         }
         rbFlag = EditorGUILayout.Toggle("Include Rigidbody?", rbFlag);
@@ -243,7 +245,7 @@ public class BattleBossFramework : EditorWindow
                 initializeAnimator();
                 initializeAttackMachines();
                 controller.Constructor(playerPrefab, playerWeapon, speed, attackRange, runSpeed, runningDistance, runFlag, health, navMovement, idle,
-                    walk, run, spawn, hit, death, attackStateMachines, phases, generateInspectorOptions(), phasesHealth, activateDistance);
+                    walk, run, spawn, hit, death, deathtimer, attackStateMachines, phases, generateInspectorOptions(), phasesHealth, activateDistance);
                 Close();
             }
             

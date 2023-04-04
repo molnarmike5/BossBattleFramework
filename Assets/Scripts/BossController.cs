@@ -81,7 +81,7 @@ public class BossController : MonoBehaviour
     }
     public void Constructor(GameObject player, GameObject playerWeapon, float speed,  float attackRange, float runSpeed, 
         float runningDistance, bool includeRun, float health, bool navMovement, AnimationClip idle, AnimationClip walk, 
-        AnimationClip run, AnimationClip spawn, AnimationClip hit, AnimationClip death, List<AnimatorStateMachine> attackStateMachines, 
+        AnimationClip run, AnimationClip spawn, AnimationClip hit, AnimationClip death, int deathTimer, List<AnimatorStateMachine> attackStateMachines, 
         List<bool> phases, List<Moves> moves, List<float> phaseHealth, float activateDistance)
     {
         //Constructor to delegate Information from the BattleBossFramework to the BossController
@@ -105,6 +105,7 @@ public class BossController : MonoBehaviour
         this.moves = moves;
         this.phaseHealth = phaseHealth;
         this.activateDistance = activateDistance;
+        this.deathTimer = deathTimer;
     }
     
     private void Awake()
@@ -112,7 +113,7 @@ public class BossController : MonoBehaviour
         anim = GetComponent<Animator>();
         if (navMovement)
         {
-            if (GetComponent<NavMeshAgent>() == null && navMovement)
+            if (GetComponent<NavMeshAgent>() == null)
             {
                 this.AddComponent<NavMeshAgent>();
             }

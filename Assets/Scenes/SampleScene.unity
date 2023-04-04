@@ -231,7 +231,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6720002142428415073, guid: fb5d5564b2067c5478995f2c4ced21fb, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.1
+      value: 0.1
       objectReference: {fileID: 0}
     - target: {fileID: 6720002142428415073, guid: fb5d5564b2067c5478995f2c4ced21fb, type: 3}
       propertyPath: m_LocalPosition.z
@@ -299,7 +299,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6720002142428415087, guid: fb5d5564b2067c5478995f2c4ced21fb, type: 3}
       propertyPath: navMovement
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 6720002142428415087, guid: fb5d5564b2067c5478995f2c4ced21fb, type: 3}
       propertyPath: playerWeapon
