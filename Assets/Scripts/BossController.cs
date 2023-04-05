@@ -19,7 +19,7 @@ public class BossController : MonoBehaviour
     [SerializeField] private GameObject playerWeapon;
     [SerializeField] private float speed;
     [SerializeField] private float runSpeed;
-    [SerializeField] private float turnSpeed;
+    [SerializeField] private float turnSpeed = 1;
     [SerializeField] private float attackRange;
     [SerializeField] private float runningDistance;
     [SerializeField] private float health;
@@ -118,7 +118,7 @@ public class BossController : MonoBehaviour
                 this.AddComponent<NavMeshAgent>();
             }
             agent = GetComponent<NavMeshAgent>();
-            agent.stoppingDistance = attackRange - 0.5f;
+            agent.stoppingDistance = attackRange - 1f;
         }
         //Converts the phaseHealth List to a Tuple List to be able to save the corresponding phase to the health value
         parsePhaseHealth();
@@ -203,7 +203,10 @@ public class BossController : MonoBehaviour
                 {
                     anim.SetBool("Walking", false);
                     anim.SetBool("Attacking", true);
-                    GetComponent<NavMeshAgent>().destination = transform.position;
+                    if (navMovement)
+                    {
+                        agent.destination = transform.position;
+                    }
                     if (!isCoolDown)
                     {
                         if (currentStateMachines.Count > 0)
@@ -330,8 +333,11 @@ public class BossController : MonoBehaviour
                 anim.Play("Idle");
             }
             //Disable everything that is not needed anymore
-            GetComponent<NavMeshAgent>().speed = 0;
-            GetComponent<NavMeshAgent>().isStopped = true;
+            if (navMovement)
+            {
+                GetComponent<NavMeshAgent>().speed = 0;
+                GetComponent<NavMeshAgent>().isStopped = true;
+            }
             Destroy(gameObject, deathTimer);
             GetComponent<BossController>().enabled = false;
             GetComponent<CapsuleCollider>().enabled = false;

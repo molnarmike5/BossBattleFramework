@@ -56,6 +56,7 @@ public class BattleBossFramework : EditorWindow
     private List<bool> phases = new List<bool>();
     private List<float> phasesHealth = new List<float>();
     private List<List<bool>> moves = new List<List<bool>>();
+    private Avatar avatar;
 
 
 
@@ -81,6 +82,8 @@ public class BattleBossFramework : EditorWindow
         //Framework Options
         bossName = EditorGUILayout.TextField("Boss Name: ", bossName);
         bossPrefab = EditorGUILayout.ObjectField("Boss Prefab", bossPrefab, typeof(GameObject), true) as GameObject;
+        GUILayout.Label("Only if Animator Avatar exists, otherwise leave blank!", EditorStyles.boldLabel);
+        avatar = EditorGUILayout.ObjectField("Avatar", avatar, typeof(Avatar), true) as Avatar;
         playerPrefab = EditorGUILayout.ObjectField("Player Prefab", playerPrefab, typeof(GameObject), true) as GameObject;
         playerWeapon = EditorGUILayout.ObjectField("Player Weapon", playerWeapon, typeof(GameObject), true) as GameObject;
         health = EditorGUILayout.FloatField("Health: ", health);
@@ -191,10 +194,18 @@ public class BattleBossFramework : EditorWindow
         if (GUILayout.Button("Create Boss Battle"))
         {
             //Error Handling and checking for optimal use
-            if (bossPrefab == null || bossName == "" || GameObject.Find(bossName) == null)
+            if (GameObject.Find(bossName) == null)
             {
-                EditorUtility.DisplayDialog("Error", "Boss Prefab not found, name already in use or Prefab is not instantiated!", "OK");
-                
+                if (bossPrefab == null || bossName == "")
+                {
+                    EditorUtility.DisplayDialog("Error",
+                        "Boss Prefab not found or name is empty!", "OK");
+                }
+                else
+                {
+                    EditorUtility.DisplayDialog("Error", "Boss Prefab not found in scene! Make sure it is instantiated!", "OK");
+                }
+
             } else if (playerPrefab == null)
             {
                 EditorUtility.DisplayDialog("Error", "Player Prefab not found!", "OK");
@@ -270,7 +281,7 @@ public class BattleBossFramework : EditorWindow
         //Creating Animator Controller, only this way because of the way Unity handles Animator Controllers, otherwise there is no Base Layer and Root State Machine
         animatorController =
             AnimatorController.CreateAnimatorControllerAtPath("Assets/Editor/AnimatorController/BossController" + GetInstanceID() + ".controller");
-        
+
         //Adding basic Parameters to the Animator Controller
         animatorController.AddParameter("Idle", AnimatorControllerParameterType.Bool);
         animatorController.AddParameter("Walking", AnimatorControllerParameterType.Bool);
@@ -278,6 +289,7 @@ public class BattleBossFramework : EditorWindow
         animatorController.AddParameter("Running", AnimatorControllerParameterType.Bool);
 
         var rootStateMachine = animatorController.layers[0].stateMachine;
+        Debug.Log(rootStateMachine.name);
         
         //Basic States and Transitions
         var stateIdle = rootStateMachine.AddState("Idle");
@@ -293,7 +305,9 @@ public class BattleBossFramework : EditorWindow
         walktoIdle.AddCondition(AnimatorConditionMode.IfNot, 0, "Walking");
         
         //Assigning Animations to the States
+        idle.wrapMode = WrapMode.Loop;
         stateIdle.motion = idle;
+        walk.wrapMode = WrapMode.Loop;
         stateWalk.motion = walk;
         //Declaring the Default State
         rootStateMachine.defaultState = stateIdle;
@@ -310,6 +324,12 @@ public class BattleBossFramework : EditorWindow
           }
                 
         }
+
+        if (runFlag)
+        {
+            run.wrapMode = WrapMode.Loop;
+        }
+        
         stateRun.motion = run;
         
         //Generating resources for hit, so it may be used later if wished for has to be done later for attack state machines too
@@ -331,6 +351,7 @@ public class BattleBossFramework : EditorWindow
                 }
                 
             }
+            hit.wrapMode = WrapMode.Once;
             stateHit.motion = hit;
         }
         
@@ -349,6 +370,7 @@ public class BattleBossFramework : EditorWindow
                 }
                 
             }
+            death.wrapMode = WrapMode.Once;
             stateDeath.motion = death;
         }
         
@@ -360,11 +382,13 @@ public class BattleBossFramework : EditorWindow
             rootStateMachine.defaultState = stateSpawn;
             var trans = stateSpawn.AddTransition(stateIdle);
             trans.hasExitTime = true;
+            spawn.wrapMode = WrapMode.Once;
             stateSpawn.motion = spawn;
         }
         
         //Adding the Animator Controller to the Boss and setting the runtimeAnimatorController to the currently generated one
-        GameObject.Find(bossName).AddComponent<Animator>().runtimeAnimatorController = animatorController;
+        GameObject.Find(bossName).AddComponent<Animator>().avatar = avatar;
+        GameObject.Find(bossName).GetComponent<Animator>().runtimeAnimatorController = animatorController;
 
     }
 
@@ -384,7 +408,9 @@ public class BattleBossFramework : EditorWindow
                 for (int j = 0; j < phasesList[y][i].moves.Count; j++)
                 {
                     var state = stateMachine.AddState("Attack " + (j + 1));
-                    state.motion = phasesList[y][i].moves[j];
+                    var anim = phasesList[y][i].moves[j];
+                    anim.wrapMode = WrapMode.Once;
+                    state.motion = anim;
                     //First Attack is always the default state and Entry Transition
                     if (j == 0)
                     {
@@ -397,7 +423,8 @@ public class BattleBossFramework : EditorWindow
                         var previousState = stateMachine.states[j - 1].state;
                         var transition = previousState.AddTransition(state);
                         transition.hasExitTime = true;
-                    } else if (j == phasesList[y][i].moves.Count - 1)
+                    } 
+                    if (j == phasesList[y][i].moves.Count - 1)
                     {
                         //Reconnecting to the Idle state, if Spawn exists, it has to be considered
                         if (rootstateMachine.states[0].state.name == "Spawn")
@@ -417,6 +444,7 @@ public class BattleBossFramework : EditorWindow
                 if (hitFlag)
                 {
                     hitState = stateMachine.AddState("Hit");
+                    hit.wrapMode = WrapMode.Once;
                     hitState.motion = hit;
                     foreach (var state in stateMachine.states)
                     {
