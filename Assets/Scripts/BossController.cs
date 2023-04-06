@@ -6,10 +6,6 @@ using UnityEditor.Animations;
 using UnityEngine;
 using UnityEditor;
 using UnityEngine.AI;
-using UnityEngine.Serialization;
-using UnityEngine.UI;
-using UnityEngine.VFX;
-using UnityEditor.Experimental;
 using Random = UnityEngine.Random;
 
 public class BossController : MonoBehaviour
@@ -39,7 +35,6 @@ public class BossController : MonoBehaviour
     [SerializeField] private int phaseCounter;
     [Header("Hits needed for Hit Animation to Play and Hit Timer")]
     [SerializeField] private int hitCount;
-    [SerializeField] private int hitTimer;
     private int hitCounter = 0;
     [SerializeField] private List<AnimatorStateMachine> attackStateMachines;
     [SerializeField] private List<AnimatorStateMachine> currentStateMachines = new List<AnimatorStateMachine>();
@@ -59,6 +54,12 @@ public class BossController : MonoBehaviour
     
     private NavMeshAgent agent;
     private bool waiting = true;
+    private State currentState = State.SPAWN;
+    
+    private enum State
+    {
+        SPAWN, WALKING, RUNNING, ATTACKING, DEAD, HIT, IDLE 
+    }
 
     [Serializable]
     public struct Moves
@@ -81,7 +82,7 @@ public class BossController : MonoBehaviour
     }
     public void Constructor(GameObject player, GameObject playerWeapon, float speed,  float attackRange, float runSpeed, 
         float runningDistance, bool includeRun, float health, bool navMovement, AnimationClip idle, AnimationClip walk, 
-        AnimationClip run, AnimationClip spawn, AnimationClip hit, AnimationClip death, int deathTimer, List<AnimatorStateMachine> attackStateMachines, 
+        AnimationClip run, AnimationClip spawn, AnimationClip hit, AnimationClip death, int deathTimer, int attackCoolDownInSec, List<AnimatorStateMachine> attackStateMachines, 
         List<bool> phases, List<Moves> moves, List<float> phaseHealth, float activateDistance)
     {
         //Constructor to delegate Information from the BattleBossFramework to the BossController
@@ -106,6 +107,7 @@ public class BossController : MonoBehaviour
         this.phaseHealth = phaseHealth;
         this.activateDistance = activateDistance;
         this.deathTimer = deathTimer;
+        this.attackCoolDownInSec = attackCoolDownInSec;
     }
     
     private void Awake()
@@ -118,7 +120,7 @@ public class BossController : MonoBehaviour
                 this.AddComponent<NavMeshAgent>();
             }
             agent = GetComponent<NavMeshAgent>();
-            agent.stoppingDistance = attackRange - 1f;
+            agent.stoppingDistance = attackRange - 2f;
         }
         //Converts the phaseHealth List to a Tuple List to be able to save the corresponding phase to the health value
         parsePhaseHealth();
@@ -131,113 +133,151 @@ public class BossController : MonoBehaviour
     }
 
     // Update is called once per frame
-    void Update()
+    void FixedUpdate()
     {
         if (!waiting)
         {
             //Always Look At the Player
-            var targetRotation = Quaternion.LookRotation(GameObject.Find(player.name).transform.position - transform.position);
+            var targetRotation =
+                Quaternion.LookRotation(GameObject.Find(player.name).transform.position - transform.position);
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, turnSpeed * Time.deltaTime);
-            //Check if the Boss is dead
-            checkDeath();
             //Determine the current phase of the boss
             determineCurrentPhase();
             //Determine the current attack pool of the boss, depending on the current phase and the moves enabled in the Inspector
             determineCurrentAttackPool();
-            //Basic Boss AI
-            if (Vector3.Distance(transform.position, GameObject.Find(player.name).transform.position) > attackRange &&
-                !anim.GetCurrentAnimatorStateInfo(0).IsName("Spawn"))
-            {
-                if (Vector3.Distance(GameObject.Find(player.name).transform.position, transform.position) >=
-                    runningDistance && includeRun && !anim.GetBool("Attacking"))
-                {
-                    //Run
-                    anim.SetBool("Walking", false);
-                    anim.SetBool("Running", true);
-                    if (navMovement)
-                    {
-                        agent.destination = GameObject.Find(player.name).transform.position;
-                        agent.speed = runSpeed;
-                    }
-                    else
-                    {
-                        transform.Translate(Vector3.forward * runSpeed * Time.deltaTime);
-                    }
-                }
-                else if (Vector3.Distance(GameObject.Find(player.name).transform.position, transform.position) <=
-                         runningDistance && includeRun && !anim.GetBool("Attacking"))
-                {
-                    //Walk
-                    anim.SetBool("Running", false);
-                    anim.SetBool("Walking", true);
-                    if (navMovement)
-                    {
-                        agent.destination = GameObject.Find(player.name).transform.position;
-                        agent.speed = speed;
-                    }
-                    else
-                    {
-                        transform.Translate(Vector3.forward * speed * Time.deltaTime);
-                    }
-                }
-                else if (!anim.GetBool("Attacking"))
-                {
-                    //Walk, run is disabled
-                    anim.SetBool("Walking", true);
-                    if (navMovement)
-                    {
-                        agent.destination = GameObject.Find(player.name).transform.position;
-                        agent.speed = speed;
-                    }
-                    else
-                    {
-                        transform.Translate(Vector3.forward * speed * Time.deltaTime);
-                    }
-                }
-
-            }
-            else
-            {
-                //Attack
-                if (anim.GetCurrentAnimatorStateInfo(0).normalizedTime > 1.0f && !anim.IsInTransition(0))
-                {
-                    anim.SetBool("Walking", false);
-                    anim.SetBool("Attacking", true);
-                    if (navMovement)
-                    {
-                        agent.destination = transform.position;
-                    }
-                    if (!isCoolDown)
-                    {
-                        if (currentStateMachines.Count > 0)
-                        {
-                            randomAttack = Random.Range(0, currentStateMachines.Count);
-                            string name = "Attack 1";
-                            StartCoroutine(decideNextAttack(name));
-                        }
-
-                        StartCoroutine(coolDown());
-                    }
-
-                }
-            }
+            //Calculate the distance between the player and the boss
+            var distance = Vector3.Distance(GameObject.Find(player.name).transform.position, transform.position);
+            //Decide the current state of the boss
+            currentState = decideCurrentState(distance);
+            //Run the current state logic
+            runLogic(currentState);
         }
     }
 
-    IEnumerator decideNextAttack(string name)
+    private State decideCurrentState(float distance)
     {
-        //Completely Random Attack
-        anim.SetBool(currentStateMachines[randomAttack].name, true);
-        //Wait until the attack state machine is entered
-        yield return new WaitUntil(() => anim.GetCurrentAnimatorStateInfo(0).IsName(name));
-        foreach (var parameter in anim.parameters)
+        if (anim.GetCurrentAnimatorStateInfo(0).IsName("Spawn"))
         {
-            if (parameter.name.Contains("Moveset"))
-            {
-                anim.SetBool(parameter.name, false);
-            }
+            return State.SPAWN;
         }
+        else if (health <= 0)
+        {
+            return State.DEAD;
+        } 
+        else if (hitCounter >= hitCount && hitFlag && hitCount > 0)
+        {
+            return State.HIT;
+        }
+        else if ((distance <= attackRange || anim.GetBool("Attacking")))
+        {
+            return State.ATTACKING;
+        }
+        else if (distance >= runningDistance && distance > attackRange && includeRun && !anim.GetBool("Attacking"))
+        {
+            return State.RUNNING;
+        }
+        else if (distance > attackRange && distance < runningDistance && !anim.GetBool("Attacking"))
+        {
+            return State.WALKING;
+        } 
+        else
+        {
+            return State.IDLE;
+        }
+        
+    }
+
+    private void runLogic(State state)
+    {
+        switch (state)
+        {
+            case State.SPAWN:
+                break;
+            case State.DEAD:
+                anim.SetBool("Attacking", false);
+                anim.SetBool(currentStateMachines[randomAttack].name, false);
+                executeDeath();
+                break;
+            case State.HIT:
+                anim.SetBool("Attacking", false);
+                anim.SetBool(currentStateMachines[randomAttack].name, false);
+                anim.Play("Hit");
+                hitCounter = 0;
+                isCoolDown = false;
+                break;
+            case State.RUNNING:
+                anim.SetBool("Idle", false);
+                anim.SetBool(currentStateMachines[randomAttack].name, false);
+                anim.SetBool("Walking", false);
+                anim.SetBool("Running", true);
+                if (navMovement)
+                {
+                    agent.destination = GameObject.Find(player.name).transform.position;
+                    agent.speed = runSpeed;
+                }
+                else
+                {
+                    transform.Translate(Vector3.forward * runSpeed * Time.deltaTime);
+                }
+                break;
+            case State.WALKING:
+                anim.SetBool("Idle", false);
+                anim.SetBool(currentStateMachines[randomAttack].name, false);
+                anim.SetBool("Running", false);
+                anim.SetBool("Walking", true);
+                if (navMovement)
+                {
+                    agent.destination = GameObject.Find(player.name).transform.position;
+                    agent.speed = speed;
+                }
+                else
+                {
+                    transform.Translate(Vector3.forward * speed * Time.deltaTime);
+                }
+                break;
+            case State.ATTACKING:
+                anim.SetBool("Idle", false);
+                anim.SetBool("Running", false);
+                anim.SetBool("Walking", false);
+                if (!isCoolDown)
+                {
+                    anim.SetBool("Attacking", true);
+                }
+                if (navMovement)
+                {
+                    agent.destination = transform.position;
+                }
+
+                if (currentStateMachines.Count > 0 && !isCoolDown)
+                {
+                    randomAttack = Random.Range(0, currentStateMachines.Count);
+                    anim.SetBool(currentStateMachines[randomAttack].name, true);
+                    //Wait until the attack state machine is entered
+                    isCoolDown = true;
+                    StartCoroutine(setAttacking());
+                }
+                break;
+            case State.IDLE:
+                anim.SetBool("Idle", true);
+                anim.SetBool("Walking", false);
+                anim.SetBool("Running", false);
+                anim.SetBool(currentStateMachines[randomAttack].name, false);
+                if (anim.GetCurrentAnimatorStateInfo(0).normalizedTime > 1.0f && !anim.IsInTransition(0))
+                {
+                    anim.SetBool("Attacking", false);
+                    anim.Play("Idle");
+                }
+                break;
+        }
+    }
+
+    IEnumerator setAttacking()
+    {
+        yield return new WaitUntil(() => anim.GetCurrentAnimatorStateInfo(0).IsTag("Last Attack"));
+        yield return new WaitForSeconds(anim.GetCurrentAnimatorStateInfo(0).length);
         anim.SetBool("Attacking", false);
+        anim.SetBool(currentStateMachines[randomAttack].name, false);
+        StartCoroutine(coolDown());
     }
 
     private void OnCollisionEnter(Collision other)
@@ -248,16 +288,10 @@ public class BossController : MonoBehaviour
             collision = true;
             health -= 50;
             Debug.Log(health);
-            if (hitFlag && hit != null && hitCounter > hitCount)
-            {
-                anim.Play("Hit");
-                hitCounter = 0;
-            }
-            else if (hitFlag && hit != null)
+            if (hitFlag && hit != null)
             {
                 hitCounter++;
             }
-            StartCoroutine(resetHitCounter());
             StartCoroutine(resetCollision());
         }
         
@@ -313,12 +347,10 @@ public class BossController : MonoBehaviour
         }
     }
 
-    private void checkDeath()
+    private void executeDeath()
     {
         //Check if the Boss is dead
-        if (health <= 0)
-        {
-            //Disable all Animations
+        //Disable all Animations
             for (int i = 0; i < anim.parameters.Length; i++)
             {
                 anim.SetBool(anim.parameters[i].name, false);
@@ -341,7 +373,8 @@ public class BossController : MonoBehaviour
             Destroy(gameObject, deathTimer);
             GetComponent<BossController>().enabled = false;
             GetComponent<CapsuleCollider>().enabled = false;
-        }
+            GetComponent<Rigidbody>().isKinematic = true;
+        
     }
 
     private void getAttackStateMachines()
@@ -378,15 +411,9 @@ public class BossController : MonoBehaviour
 
     IEnumerator coolDown()
     {
-        isCoolDown = true;
         yield return new WaitForSeconds(attackCoolDownInSec);
         isCoolDown = false;
-    }
-    
-    IEnumerator resetHitCounter()
-    {
-        yield return new WaitForSeconds(hitTimer);
-        hitCounter = 0;
+        Debug.Log("Yikes");
     }
 
     IEnumerator resetCollision()

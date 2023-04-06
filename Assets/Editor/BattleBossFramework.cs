@@ -1,16 +1,9 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.IO;
-using Unity.Plastic.Antlr3.Runtime.Misc;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEditor;
 using UnityEditor.Animations;
-using UnityEditor.SceneManagement;
-using UnityEditorInternal;
 using UnityEngine.AI;
-using UnityEngine.UI;
 using AnimatorController = UnityEditor.Animations.AnimatorController;
 using AnimatorControllerParameterType = UnityEngine.AnimatorControllerParameterType;
 
@@ -57,6 +50,7 @@ public class BattleBossFramework : EditorWindow
     private List<float> phasesHealth = new List<float>();
     private List<List<bool>> moves = new List<List<bool>>();
     private Avatar avatar;
+    private int attackCoolDownInSec;
 
 
 
@@ -90,6 +84,7 @@ public class BattleBossFramework : EditorWindow
         idle = EditorGUILayout.ObjectField("Idle Animation: ", idle, typeof(AnimationClip), false) as AnimationClip;
         walk = EditorGUILayout.ObjectField("Walk Animation: ", walk, typeof(AnimationClip), false) as AnimationClip;
         speed = EditorGUILayout.FloatField("Speed: ", speed);
+        attackCoolDownInSec = EditorGUILayout.IntField("Attack Cool Down in seconds: ", attackCoolDownInSec);
         activateDistance = EditorGUILayout.FloatField("Activate Distance: ", activateDistance);
         GUILayout.Box(GUIContent.none, style, GUILayout.Height(1));
         GUILayout.Label("Movement Options:", EditorStyles.boldLabel);
@@ -185,16 +180,11 @@ public class BattleBossFramework : EditorWindow
             phasesList.Add(new List<MoveSet>());
         }
         GUILayout.Box(GUIContent.none, style, GUILayout.Height(1));
-        
-        if (GUILayout.Button("Instantiate Boss Prefab"))
-        {
-            Instantiate(bossPrefab).name = bossName;
-        }
-        
+
         if (GUILayout.Button("Create Boss Battle"))
         {
             //Error Handling and checking for optimal use
-            if (GameObject.Find(bossName) == null)
+            if (GameObject.Find(bossPrefab.name) == null)
             {
                 if (bossPrefab == null || bossName == "")
                 {
@@ -203,7 +193,7 @@ public class BattleBossFramework : EditorWindow
                 }
                 else
                 {
-                    EditorUtility.DisplayDialog("Error", "Boss Prefab not found in scene! Make sure it is instantiated!", "OK");
+                    EditorUtility.DisplayDialog("Error", "Boss Prefab not found in scene!", "OK");
                 }
 
             } else if (playerPrefab == null)
@@ -238,7 +228,8 @@ public class BattleBossFramework : EditorWindow
             else
             {
                 //Creating Boss Battle
-                var bossobj = GameObject.Find(bossName);
+                var bossobj = GameObject.Find(bossPrefab.name);
+                bossobj.name = bossName;
                 bossobj.AddComponent<CapsuleCollider>();
                 if (rbFlag)
                 {
@@ -256,7 +247,7 @@ public class BattleBossFramework : EditorWindow
                 initializeAnimator();
                 initializeAttackMachines();
                 controller.Constructor(playerPrefab, playerWeapon, speed, attackRange, runSpeed, runningDistance, runFlag, health, navMovement, idle,
-                    walk, run, spawn, hit, death, deathtimer, attackStateMachines, phases, generateInspectorOptions(), phasesHealth, activateDistance);
+                    walk, run, spawn, hit, death, deathtimer, attackCoolDownInSec, attackStateMachines, phases, generateInspectorOptions(), phasesHealth, activateDistance);
                 Close();
             }
             
@@ -333,27 +324,26 @@ public class BattleBossFramework : EditorWindow
         stateRun.motion = run;
         
         //Generating resources for hit, so it may be used later if wished for has to be done later for attack state machines too
-        if (hitFlag)
-        {
-            var stateHit = rootStateMachine.AddState("Hit");
-            animatorController.AddParameter("Hit", AnimatorControllerParameterType.Bool);
+        
+        var stateHit = rootStateMachine.AddState("Hit");
+        animatorController.AddParameter("Hit", AnimatorControllerParameterType.Bool);
 
-            foreach (var state in rootStateMachine.states)
+        foreach (var state in rootStateMachine.states)
+        {
+            if (state.state.name != stateHit.name)
             {
-                if (state.state.name != stateHit.name)
-                {
-                    var transDest = stateHit.AddTransition(state.state);
-                    //transDest.AddCondition(AnimatorConditionMode.IfNot, 0, "Hit");
-                    transDest.hasExitTime = true;
-                    var transFrom = state.state.AddTransition(stateHit);
-                    //transFrom.hasExitTime = true;
-                    transFrom.AddCondition(AnimatorConditionMode.If, 0, "Hit");
-                }
-                
+                var transDest = stateHit.AddTransition(state.state);
+                //transDest.AddCondition(AnimatorConditionMode.IfNot, 0, "Hit");
+                transDest.hasExitTime = true;
+                var transFrom = state.state.AddTransition(stateHit);
+                //transFrom.hasExitTime = true;
+                transFrom.AddCondition(AnimatorConditionMode.If, 0, "Hit");
             }
-            hit.wrapMode = WrapMode.Once;
-            stateHit.motion = hit;
+                
         }
+        hit.wrapMode = WrapMode.Once;
+        stateHit.motion = hit;
+        
         
         //Generating resources for death, so it may be used later if wished for
         if (deathFlag)
@@ -414,6 +404,7 @@ public class BattleBossFramework : EditorWindow
                     //First Attack is always the default state and Entry Transition
                     if (j == 0)
                     {
+                        state.tag = "First Attack";
                         stateMachine.AddEntryTransition(state);
                         stateMachine.defaultState = state;
                     }
@@ -429,13 +420,17 @@ public class BattleBossFramework : EditorWindow
                         //Reconnecting to the Idle state, if Spawn exists, it has to be considered
                         if (rootstateMachine.states[0].state.name == "Spawn")
                         {
+                            state.tag = "Last Attack";
                             var trans = state.AddTransition(rootstateMachine.states[1].state);
-                            trans.hasExitTime = true;
+                            trans.hasExitTime = false;
+                            trans.AddCondition(AnimatorConditionMode.IfNot, 0, "Attacking");
                         }
                         else
                         {
+                            state.tag = "Last Attack";
                             var trans = state.AddTransition(rootstateMachine.states[0].state);
-                            trans.hasExitTime = true;
+                            trans.hasExitTime = false;
+                            trans.AddCondition(AnimatorConditionMode.IfNot, 0, "Attacking");
                         }
                     }
                 }
