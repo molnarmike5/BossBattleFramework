@@ -55,6 +55,7 @@ public class BossController : MonoBehaviour
     private NavMeshAgent agent;
     private bool waiting = true;
     private State currentState = State.SPAWN;
+    private bool setAttackingRunning = false;
     
     private enum State
     {
@@ -82,7 +83,7 @@ public class BossController : MonoBehaviour
     }
     public void Constructor(GameObject player, GameObject playerWeapon, float speed,  float attackRange, float runSpeed, 
         float runningDistance, bool includeRun, float health, bool navMovement, AnimationClip idle, AnimationClip walk, 
-        AnimationClip run, AnimationClip spawn, AnimationClip hit, AnimationClip death, int deathTimer, int attackCoolDownInSec, List<AnimatorStateMachine> attackStateMachines, 
+        AnimationClip run, AnimationClip spawn, AnimationClip hit, int hitCount, AnimationClip death, int deathTimer, int attackCoolDownInSec, List<AnimatorStateMachine> attackStateMachines, 
         List<bool> phases, List<Moves> moves, List<float> phaseHealth, float activateDistance)
     {
         //Constructor to delegate Information from the BattleBossFramework to the BossController
@@ -108,6 +109,7 @@ public class BossController : MonoBehaviour
         this.activateDistance = activateDistance;
         this.deathTimer = deathTimer;
         this.attackCoolDownInSec = attackCoolDownInSec;
+        this.hitCount = hitCount;
     }
     
     private void Awake()
@@ -133,7 +135,7 @@ public class BossController : MonoBehaviour
     }
 
     // Update is called once per frame
-    void FixedUpdate()
+    void Update()
     {
         if (!waiting)
         {
@@ -195,19 +197,19 @@ public class BossController : MonoBehaviour
                 break;
             case State.DEAD:
                 anim.SetBool("Attacking", false);
-                anim.SetBool(currentStateMachines[randomAttack].name, false);
+                setAllMoveSetsFalse();
                 executeDeath();
                 break;
             case State.HIT:
                 anim.SetBool("Attacking", false);
-                anim.SetBool(currentStateMachines[randomAttack].name, false);
+                setAllMoveSetsFalse();
                 anim.Play("Hit");
                 hitCounter = 0;
                 isCoolDown = false;
                 break;
             case State.RUNNING:
                 anim.SetBool("Idle", false);
-                anim.SetBool(currentStateMachines[randomAttack].name, false);
+                setAllMoveSetsFalse();
                 anim.SetBool("Walking", false);
                 anim.SetBool("Running", true);
                 if (navMovement)
@@ -222,7 +224,7 @@ public class BossController : MonoBehaviour
                 break;
             case State.WALKING:
                 anim.SetBool("Idle", false);
-                anim.SetBool(currentStateMachines[randomAttack].name, false);
+                setAllMoveSetsFalse();
                 anim.SetBool("Running", false);
                 anim.SetBool("Walking", true);
                 if (navMovement)
@@ -248,7 +250,7 @@ public class BossController : MonoBehaviour
                     agent.destination = transform.position;
                 }
 
-                if (currentStateMachines.Count > 0 && !isCoolDown)
+                if (currentStateMachines.Count > 0 && !isCoolDown && !setAttackingRunning)
                 {
                     randomAttack = Random.Range(0, currentStateMachines.Count);
                     anim.SetBool(currentStateMachines[randomAttack].name, true);
@@ -261,23 +263,34 @@ public class BossController : MonoBehaviour
                 anim.SetBool("Idle", true);
                 anim.SetBool("Walking", false);
                 anim.SetBool("Running", false);
-                anim.SetBool(currentStateMachines[randomAttack].name, false);
-                if (anim.GetCurrentAnimatorStateInfo(0).normalizedTime > 1.0f && !anim.IsInTransition(0))
-                {
-                    anim.SetBool("Attacking", false);
-                    anim.Play("Idle");
-                }
+                setAllMoveSetsFalse();
+                anim.Play("Idle");
                 break;
         }
     }
 
     IEnumerator setAttacking()
     {
+        setAttackingRunning = true;
         yield return new WaitUntil(() => anim.GetCurrentAnimatorStateInfo(0).IsTag("Last Attack"));
         yield return new WaitForSeconds(anim.GetCurrentAnimatorStateInfo(0).length);
         anim.SetBool("Attacking", false);
         anim.SetBool(currentStateMachines[randomAttack].name, false);
         StartCoroutine(coolDown());
+        setAttackingRunning = false;
+    }
+
+    private void setAllMoveSetsFalse()
+    {
+
+        foreach (var parameter in anim.parameters)
+        {
+            if (parameter.name.Contains("Moveset"))
+            {
+                anim.SetBool(parameter.name, false);
+            }
+        }
+        
     }
 
     private void OnCollisionEnter(Collision other)
@@ -413,7 +426,6 @@ public class BossController : MonoBehaviour
     {
         yield return new WaitForSeconds(attackCoolDownInSec);
         isCoolDown = false;
-        Debug.Log("Yikes");
     }
 
     IEnumerator resetCollision()

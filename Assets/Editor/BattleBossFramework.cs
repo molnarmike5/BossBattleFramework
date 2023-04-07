@@ -51,6 +51,7 @@ public class BattleBossFramework : EditorWindow
     private List<List<bool>> moves = new List<List<bool>>();
     private Avatar avatar;
     private int attackCoolDownInSec;
+    private int hitCount;
 
 
 
@@ -79,6 +80,7 @@ public class BattleBossFramework : EditorWindow
         GUILayout.Label("Only if Animator Avatar exists, otherwise leave blank!", EditorStyles.boldLabel);
         avatar = EditorGUILayout.ObjectField("Avatar", avatar, typeof(Avatar), true) as Avatar;
         playerPrefab = EditorGUILayout.ObjectField("Player Prefab", playerPrefab, typeof(GameObject), true) as GameObject;
+        GUILayout.Label("Player weapon has to have a collider attached and has to be tagged as 'Player Weapon' to work initially!", EditorStyles.boldLabel);
         playerWeapon = EditorGUILayout.ObjectField("Player Weapon", playerWeapon, typeof(GameObject), true) as GameObject;
         health = EditorGUILayout.FloatField("Health: ", health);
         idle = EditorGUILayout.ObjectField("Idle Animation: ", idle, typeof(AnimationClip), false) as AnimationClip;
@@ -112,6 +114,8 @@ public class BattleBossFramework : EditorWindow
         {
             EditorGUI.indentLevel++;
             hit = EditorGUILayout.ObjectField("Hit Animation: ", hit, typeof(AnimationClip), false) as AnimationClip;
+            GUILayout.Label("Hit Count is the number of times the boss can be hit before hit animation is triggered!", EditorStyles.boldLabel);
+            hitCount = EditorGUILayout.IntField("Hit Count: ", hitCount);
             EditorGUI.indentLevel--;
         }
         deathFlag = EditorGUILayout.Toggle("Include Death Animation?", deathFlag);
@@ -230,7 +234,10 @@ public class BattleBossFramework : EditorWindow
                 //Creating Boss Battle
                 var bossobj = GameObject.Find(bossPrefab.name);
                 bossobj.name = bossName;
-                bossobj.AddComponent<CapsuleCollider>();
+                if (bossobj.GetComponent<CapsuleCollider>() == null)
+                {
+                    bossobj.AddComponent<CapsuleCollider>();
+                }
                 if (rbFlag)
                 {
                     var rb = bossobj.AddComponent<Rigidbody>();
@@ -247,7 +254,7 @@ public class BattleBossFramework : EditorWindow
                 initializeAnimator();
                 initializeAttackMachines();
                 controller.Constructor(playerPrefab, playerWeapon, speed, attackRange, runSpeed, runningDistance, runFlag, health, navMovement, idle,
-                    walk, run, spawn, hit, death, deathtimer, attackCoolDownInSec, attackStateMachines, phases, generateInspectorOptions(), phasesHealth, activateDistance);
+                    walk, run, spawn, hit, hitCount, death, deathtimer, attackCoolDownInSec, attackStateMachines, phases, generateInspectorOptions(), phasesHealth, activateDistance);
                 Close();
             }
             
