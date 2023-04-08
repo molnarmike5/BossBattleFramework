@@ -229,7 +229,11 @@ public class BattleBossFramework : EditorWindow
             {
                 EditorUtility.DisplayDialog("Error", "Activate Distance must be greater than 0!", "OK");
             }
-            else
+            else if (GameObject.Find(bossPrefab.name).GetComponent<Animator>() != null)
+            {
+                EditorUtility.DisplayDialog("Error", "There is already an animator attached to this game object, please remove it first!", "OK");
+            }
+            else 
             {
                 //Creating Boss Battle
                 var bossobj = GameObject.Find(bossPrefab.name);
@@ -300,7 +304,9 @@ public class BattleBossFramework : EditorWindow
         idletoWalk.AddCondition(AnimatorConditionMode.If, 0, "Walking");
 
         var walktoIdle = stateWalk.AddTransition(stateIdle);
+        walktoIdle.AddCondition(AnimatorConditionMode.If, 0, "Idle");
         walktoIdle.AddCondition(AnimatorConditionMode.IfNot, 0, "Walking");
+        walktoIdle.hasExitTime = true;
         
         //Assigning Animations to the States
         idle.wrapMode = WrapMode.Loop;
@@ -317,8 +323,15 @@ public class BattleBossFramework : EditorWindow
           {
              var transDest = stateRun.AddTransition(state.state);
              transDest.AddCondition(AnimatorConditionMode.IfNot, 0, "Running");
+             transDest.hasExitTime = true;
              var transFrom = state.state.AddTransition(stateRun);
              transFrom.AddCondition(AnimatorConditionMode.If, 0, "Running");
+             transFrom.hasExitTime = true;
+             if (state.state.name == "Idle")
+             {
+                 transFrom.AddCondition(AnimatorConditionMode.IfNot, 0, "Idle");
+                 transFrom.hasExitTime = false;
+             }
           }
                 
         }
@@ -340,10 +353,8 @@ public class BattleBossFramework : EditorWindow
             if (state.state.name != stateHit.name)
             {
                 var transDest = stateHit.AddTransition(state.state);
-                //transDest.AddCondition(AnimatorConditionMode.IfNot, 0, "Hit");
                 transDest.hasExitTime = true;
                 var transFrom = state.state.AddTransition(stateHit);
-                //transFrom.hasExitTime = true;
                 transFrom.AddCondition(AnimatorConditionMode.If, 0, "Hit");
             }
                 
@@ -364,6 +375,7 @@ public class BattleBossFramework : EditorWindow
                 {
                     var transFrom = state.state.AddTransition(stateDeath);
                     transFrom.AddCondition(AnimatorConditionMode.If, 0, "Death");
+                    transFrom.hasExitTime = true;
                 }
                 
             }

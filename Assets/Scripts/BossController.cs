@@ -170,7 +170,7 @@ public class BossController : MonoBehaviour
         {
             return State.HIT;
         }
-        else if ((distance <= attackRange || anim.GetBool("Attacking")))
+        else if ((distance <= attackRange || anim.GetBool("Attacking")) && currentStateMachines.Count > 0)
         {
             return State.ATTACKING;
         }
@@ -250,7 +250,7 @@ public class BossController : MonoBehaviour
                     agent.destination = transform.position;
                 }
 
-                if (currentStateMachines.Count > 0 && !isCoolDown && !setAttackingRunning)
+                if (!isCoolDown && !setAttackingRunning)
                 {
                     randomAttack = Random.Range(0, currentStateMachines.Count);
                     anim.SetBool(currentStateMachines[randomAttack].name, true);
@@ -328,7 +328,7 @@ public class BossController : MonoBehaviour
         //Determines the current phase of the boss
         for (int i = 0; i < phasesHealthTup.Count; i++)
         {
-            if (health <= phasesHealthTup[i].Item2)
+            if (health <= phasesHealthTup[i].Item2 && phasesHealthTup[i].Item3)
             {
                 phaseCounter = phasesHealthTup[i].Item1;
             }
@@ -415,6 +415,7 @@ public class BossController : MonoBehaviour
     
     private void parsePhaseHealth()
     {
+        phasesHealthTup.Clear();
         //Parse the Phase Health from the Inspector
         for (int i = 0; i < phaseHealth.Count; i++)
         {
