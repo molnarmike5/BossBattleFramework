@@ -26,7 +26,7 @@ public class BossController : MonoBehaviour
     [SerializeField] private AnimationClip hit;
     [SerializeField] private AnimationClip death;
     [SerializeField] private int attackCoolDownInSec;
-    private bool isCoolDown = false;
+    [SerializeField] private bool isCoolDown = false;
     private AnimatorController animatorController;
     private Animator anim;
     [SerializeField] private bool navMovement;
@@ -170,7 +170,7 @@ public class BossController : MonoBehaviour
         {
             return State.HIT;
         }
-        else if ((distance <= attackRange || anim.GetBool("Attacking")) && currentStateMachines.Count > 0)
+        else if ((distance <= attackRange  && currentStateMachines.Count > 0 && !isCoolDown) || anim.GetBool("Attacking"))
         {
             return State.ATTACKING;
         }
@@ -203,12 +203,15 @@ public class BossController : MonoBehaviour
             case State.HIT:
                 anim.SetBool("Attacking", false);
                 setAllMoveSetsFalse();
-                anim.Play("Hit");
-                hitCounter = 0;
+                StopCoroutine(coolDown());
                 isCoolDown = false;
+                StartCoroutine(coolDown());
+                anim.SetBool("Hit", true);
+                //anim.Play("Hit");
                 break;
             case State.RUNNING:
                 anim.SetBool("Idle", false);
+                anim.SetBool("Hit", false);
                 setAllMoveSetsFalse();
                 anim.SetBool("Walking", false);
                 anim.SetBool("Running", true);
@@ -224,6 +227,7 @@ public class BossController : MonoBehaviour
                 break;
             case State.WALKING:
                 anim.SetBool("Idle", false);
+                anim.SetBool("Hit", false);
                 setAllMoveSetsFalse();
                 anim.SetBool("Running", false);
                 anim.SetBool("Walking", true);
@@ -241,30 +245,31 @@ public class BossController : MonoBehaviour
                 anim.SetBool("Idle", false);
                 anim.SetBool("Running", false);
                 anim.SetBool("Walking", false);
-                if (!isCoolDown)
-                {
-                    anim.SetBool("Attacking", true);
-                }
+                anim.SetBool("Hit", false);
+                anim.SetBool("Attacking", true);
                 if (navMovement)
                 {
                     agent.destination = transform.position;
                 }
 
-                if (!isCoolDown && !setAttackingRunning)
+                if (!setAttackingRunning)
                 {
+                    setAllMoveSetsFalse();
                     randomAttack = Random.Range(0, currentStateMachines.Count);
                     anim.SetBool(currentStateMachines[randomAttack].name, true);
                     //Wait until the attack state machine is entered
                     isCoolDown = true;
+                    StartCoroutine(coolDown());
                     StartCoroutine(setAttacking());
                 }
                 break;
             case State.IDLE:
-                anim.SetBool("Idle", true);
+                anim.SetBool("Hit", false);
                 anim.SetBool("Walking", false);
                 anim.SetBool("Running", false);
+                anim.SetBool("Idle", true);
                 setAllMoveSetsFalse();
-                anim.Play("Idle");
+                //anim.Play("Idle");
                 break;
         }
     }
@@ -272,11 +277,12 @@ public class BossController : MonoBehaviour
     IEnumerator setAttacking()
     {
         setAttackingRunning = true;
-        yield return new WaitUntil(() => anim.GetCurrentAnimatorStateInfo(0).IsTag("Last Attack"));
+        yield return new WaitUntil(() =>
+            anim.GetCurrentAnimatorStateInfo(0).IsTag("Last Attack") ||
+            anim.GetCurrentAnimatorStateInfo(0).IsName("Hit"));
         yield return new WaitForSeconds(anim.GetCurrentAnimatorStateInfo(0).length);
         anim.SetBool("Attacking", false);
         anim.SetBool(currentStateMachines[randomAttack].name, false);
-        StartCoroutine(coolDown());
         setAttackingRunning = false;
     }
 
@@ -304,6 +310,12 @@ public class BossController : MonoBehaviour
             if (hitFlag && hit != null)
             {
                 hitCounter++;
+            }
+
+            if (hitCounter >= hitCount)
+            {
+                anim.Play("Hit");
+                hitCounter = 0;
             }
             StartCoroutine(resetCollision());
         }
@@ -425,6 +437,10 @@ public class BossController : MonoBehaviour
 
     IEnumerator coolDown()
     {
+        yield return new WaitUntil(() =>
+            anim.GetCurrentAnimatorStateInfo(0).IsTag("Last Attack") ||
+            anim.GetCurrentAnimatorStateInfo(0).IsName("Hit"));
+        yield return new WaitForSeconds(anim.GetCurrentAnimatorStateInfo(0).length);
         yield return new WaitForSeconds(attackCoolDownInSec);
         isCoolDown = false;
     }
