@@ -18,6 +18,10 @@ Solltest du irgendwo hängen oder nicht weiterkommen, oder stößt du an einem B
 
 Die Lösung ist auf keinem Fall perfekt und fertig, es war viel mehr involviert als ich dachte, aber ich finde es ist eine gute Anfang und man kann darauf sehr gut aufbauen. :)
 
+Controlls für das Player Character sind das übliche WASD, mit Mausclick Angriff und mit Maus bewegst du die Kamera.
+
 Beste Grüße,
 
 Mike
+
+P.S.: Leider hat Lavapit hier nirgendswo reingepasst xD
